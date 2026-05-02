@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import create_tables
-from app.routers import applications, listings, recommendations, users
+from app.routers import applications, features, listings, messages, persons, recommendations, users
 
 
 @asynccontextmanager
@@ -24,6 +24,9 @@ app.add_middleware(
 app.include_router(listings.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(applications.router, prefix="/api")
+app.include_router(features.router, prefix="/api")
+app.include_router(persons.router, prefix="/api")
+app.include_router(messages.router, prefix="/api")
 app.include_router(recommendations.router, prefix="/api")
 
 
