@@ -57,6 +57,7 @@ class Listing(SQLModel, table=True):
 class User(SQLModel, table=True):
     user_id: str = Field(default_factory=new_id, primary_key=True)
     name: Optional[str] = None
+    email: Optional[str] = None
     gender: Optional[str] = None
     occupation: Optional[str] = None
     income: Optional[int] = None  # monthly net in euros
