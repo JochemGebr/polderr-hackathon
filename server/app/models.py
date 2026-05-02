@@ -78,6 +78,7 @@ class Match(SQLModel, table=True):
     listing_id: str = Field(foreign_key="listing.listing_id", index=True)
     match_score: float = 0.0
     features: str = "[]"    # JSON: list of {name, pretty_name, score}  (-1.0 weak → +1.0 strong)
+    message: Optional[str] = None  # cached LLM-generated recommendation letter
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
