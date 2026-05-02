@@ -24,9 +24,8 @@
     "prettier": "3.2.4",
     "typescript": "5.3.3"
   },
-  "manifest": {
-    "host_permissions": [
-      "https://*/*"
-    ]
-  }
+    "manifest": {
+      "permissions": ["tabs", "activeTab", "scripting"],
+      "host_permissions": ["https://*.kamernet.nl/*", "https://kamernet.nl/*"]
+    }
 }

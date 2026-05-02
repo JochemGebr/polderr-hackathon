@@ -1,16 +1,30 @@
 import { useEffect, useState } from "react"
 import "./popup.css"
+import { extractKamernetListingFromTab } from "./lib/extractKamernetListing"
 
-const API_BASE_URL = "http://localhost:8000"
+const API_BASE_URL = "http://localhost:3001"
 
-interface ExtractFeaturesResponse {
-  estimatedFitScore: number
-  listingFeatures: string[]
-  recommendedMotivationPoints: string[]
+interface ListingResponse {
+  listing_id: string
+  title: string
+  url: string
 }
 
-interface GenerateMessageResponse {
+interface UserResponse {
+  user_id: string
+}
+
+interface AnalysisResult {
+  listingId: string
+  userId: string
+  title: string
+  url: string
+}
+
+interface RecommendationResponse {
   message: string
+  key_strengths: string[]
+  addressed_concerns: string[]
 }
 
 function IndexPopup() {
@@ -18,12 +32,58 @@ function IndexPopup() {
   const [loadingState, setLoadingState] = useState<"idle" | "analysing" | "generating">("idle")
   const [error, setError] = useState<string | null>(null)
   
-  const [features, setFeatures] = useState<ExtractFeaturesResponse | null>(null)
-  const [generatedMessage, setGeneratedMessage] = useState<string | null>(null)
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
+  const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null)
   const [editableMessage, setEditableMessage] = useState<string>("")
   const [copied, setCopied] = useState(false)
   const [pageText, setPageText] = useState<string>("")
   const fullPageUrl = chrome.runtime.getURL("options.html")
+
+  const apiFetch = async <T,>(path: string, options?: RequestInit): Promise<T> => {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options?.headers ?? {})
+      }
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(errorText || "Backend unavailable or returned an error.")
+    }
+
+    return response.json() as Promise<T>
+  }
+
+  const buildExternalId = (url: string | undefined) => {
+    if (!url) return `kamernet-${Date.now()}`
+    const match = url.match(/kamer-(\d+)/)
+    if (match) return `kamernet-${match[1]}`
+    const sanitized = url.replace(/[^a-zA-Z0-9_-]/g, "_").slice(-60)
+    return `kamernet-${sanitized}`
+  }
+
+  const getOrCreateUserId = async () => {
+    const storedId = localStorage.getItem("crowdapplyUserId")
+    if (storedId) return storedId
+
+    const user = await apiFetch<UserResponse>("/api/users", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Extension User",
+        occupation: "",
+        income: null,
+        age: null,
+        has_pets: false,
+        bio: "",
+        profile: { source: "browser-extension" }
+      })
+    })
+
+    localStorage.setItem("crowdapplyUserId", user.user_id)
+    return user.user_id
+  }
 
   // Determine if we're on Kamernet when popup opens
   useEffect(() => {
@@ -53,35 +113,46 @@ function IndexPopup() {
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-      
+
       if (!tab.id) throw new Error("No active tab")
 
-      // Request text from content script
-      // -> Note for integration: Your content script must listen for "GET_PAGE_TEXT" 
-      //    and respond with the extracted textual info of the listing.
-      const response: { text?: string; error?: string } = await chrome.tabs.sendMessage(tab.id, { 
-        action: "GET_PAGE_TEXT" 
-      }).catch(err => {
-        throw new Error("Could not read page content. Make sure the content script is running.")
-      })
+      const extracted = await extractKamernetListingFromTab(tab.id)
 
-      if (response.error || !response.text) {
-        throw new Error(response.error || "Could not extract listing information.")
-      }
+      setPageText(extracted.text)
+      console.log(extracted)
 
-      setPageText(response.text)
+      const userId = await getOrCreateUserId()
 
-      const apiRes = await fetch(`${API_BASE_URL}/extract-listing-features`, {
+      const listing = await apiFetch<ListingResponse>("/api/listings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listingText: response.text })
+        body: JSON.stringify({
+          external_id: buildExternalId(tab.url),
+          url: extracted.url,
+          title: extracted.title,
+          description: extracted.text,
+          price: extracted.price,
+          location: extracted.location,
+          listing_type: extracted.listing_type,
+          raw: {
+            source: "browser-extension",
+            extractedText: extracted.text,
+            ...extracted.raw
+          },
+          accepted_person_id: null
+        })
       })
 
-      if (!apiRes.ok) throw new Error("Backend unavailable or returned an error.")
+      setAnalysis({
+        listingId: listing.listing_id,
+        userId,
+        title: listing.title,
+        url: listing.url
+      })
 
-      const data: ExtractFeaturesResponse = await apiRes.json()
-      setFeatures(data)
+      setRecommendation(null)
+      setEditableMessage("")
     } catch (err: any) {
+      console.error(err)
       setError(err.message || "An unexpected error occurred.")
     } finally {
       setLoadingState("idle")
@@ -89,24 +160,15 @@ function IndexPopup() {
   }
 
   const handleGenerate = async () => {
-    if (!features || !pageText) return
+    if (!analysis || !pageText) return
     setLoadingState("generating")
     setError(null)
 
     try {
-      const apiRes = await fetch(`${API_BASE_URL}/generate-application-message`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          listingText: pageText,
-          motivationPoints: features.recommendedMotivationPoints
-        })
-      })
-
-      if (!apiRes.ok) throw new Error("Backend unavailable or returned an error.")
-
-      const data: GenerateMessageResponse = await apiRes.json()
-      setGeneratedMessage(data.message)
+      const data = await apiFetch<RecommendationResponse>(
+        `/api/recommendations?listing_id=${analysis.listingId}&user_id=${analysis.userId}`
+      )
+      setRecommendation(data)
       setEditableMessage(data.message)
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.")
@@ -198,7 +260,7 @@ function IndexPopup() {
         </div>
       )}
 
-      {!features && (
+      {!analysis && (
         <button 
           className="popup-button popup-button-primary"
           onClick={handleAnalyse}
@@ -208,36 +270,12 @@ function IndexPopup() {
         </button>
       )}
 
-      {features && !generatedMessage && (
+      {analysis && !recommendation && (
         <div className="popup-card">
           <div className="popup-section">
-            <p className="popup-score">
-              Estimated fit score: {features.estimatedFitScore}%
-            </p>
-            <p className="popup-disclaimer">
-              *This is an estimate based on previous application patterns. It does not guarantee acceptance.
-            </p>
-            <div className="popup-progress">
-              <div className="popup-progress-fill" style={{ width: `${features.estimatedFitScore}%` }} />
-            </div>
-          </div>
-
-          <div className="popup-section">
-            <p className="popup-section-title">Detected Features:</p>
-            <div className="popup-badges">
-              {features.listingFeatures.map((f, i) => (
-                <span key={i} className="popup-badge">{f}</span>
-              ))}
-            </div>
-          </div>
-
-          <div className="popup-section">
-            <p className="popup-section-title">Top Motivation Points:</p>
-            <ul className="popup-list">
-              {features.recommendedMotivationPoints.map((point, i) => (
-                <li key={i} className="popup-list-item">{point}</li>
-              ))}
-            </ul>
+            <p className="popup-section-title">Listing ready</p>
+            <p className="popup-score">{analysis.title}</p>
+            <p className="popup-disclaimer">{analysis.url}</p>
           </div>
 
           <button 
@@ -250,12 +288,30 @@ function IndexPopup() {
         </div>
       )}
 
-      {generatedMessage && (
+      {recommendation && (
         <div className="popup-card">
           <p className="popup-message-title">Message Draft</p>
           <p className="popup-message-hint">
             Make sure to review and edit before sending!
           </p>
+          <div className="popup-section">
+            <p className="popup-section-title">Key strengths</p>
+            <div className="popup-badges">
+              {recommendation.key_strengths.map((strength, i) => (
+                <span key={i} className="popup-badge">{strength}</span>
+              ))}
+            </div>
+          </div>
+          {recommendation.addressed_concerns.length > 0 ? (
+            <div className="popup-section">
+              <p className="popup-section-title">Concerns addressed</p>
+              <ul className="popup-list">
+                {recommendation.addressed_concerns.map((concern, i) => (
+                  <li key={i} className="popup-list-item">{concern}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <textarea
             className="popup-textarea"
             value={editableMessage}
