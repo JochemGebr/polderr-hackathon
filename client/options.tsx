@@ -10,6 +10,7 @@ import {
 } from "recharts"
 
 const API_BASE = "http://localhost:3001/api"
+const SEED_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 type AppStatus =
 	| "PENDING"
@@ -95,11 +96,18 @@ function OptionsPage() {
 	const [loading, setLoading] = useState(true)
 
 	useEffect(() => {
+		const previousBodyMargin = document.body.style.margin
+		document.body.style.margin = "0"
+		return () => {
+			document.body.style.margin = previousBodyMargin
+		}
+	}, [])
+
+	useEffect(() => {
 		chrome.storage.local.get("userId", async (result) => {
-			const id = result.userId as string | undefined
-			if (!id) {
-				setLoading(false)
-				return
+			const id = (result.userId as string | undefined) ?? SEED_USER_ID
+			if (!result.userId) {
+				chrome.storage.local.set({ userId: SEED_USER_ID })
 			}
 			setUserId(id)
 			const [userRes, appsRes, featuresRes] = await Promise.all([

@@ -25,6 +25,9 @@ def find_similar_applications(
     limit: int = 5,
 ) -> list[dict[str, Any]]:
     listing_query = select(Listing.listing_id)
+    listing_type = getattr(listing, "listing_type", None)
+    if listing_type and hasattr(Listing, "listing_type"):
+        listing_query = listing_query.where(Listing.listing_type == listing_type)
     if listing.location:
         listing_query = listing_query.where(Listing.location == listing.location)
     if listing.price is not None:
@@ -198,22 +201,7 @@ def compute_match(
             for f in sorted(lf_list, key=lambda f: -f["score"])
         ]
 
-    # Select up to 5 features: default 3 positive + 2 negative; pad either
-    # side if the other side doesn't have enough.
-    positives = sorted([f for f in features if f["score"] > 0], key=lambda f: -f["score"])
-    negatives = sorted([f for f in features if f["score"] < 0], key=lambda f: f["score"])
-
-    n_pos = min(3, len(positives))
-    n_neg = min(2, len(negatives))
-    shortfall = 5 - n_pos - n_neg
-    if shortfall > 0:
-        extra_pos = min(shortfall, len(positives) - n_pos)
-        n_pos += extra_pos
-        shortfall -= extra_pos
-    if shortfall > 0:
-        n_neg += min(shortfall, len(negatives) - n_neg)
-
-    return match_score, positives[:n_pos] + negatives[:n_neg]
+    return match_score, features
 
 
 def get_principles() -> str:

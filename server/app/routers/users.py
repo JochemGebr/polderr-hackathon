@@ -1,6 +1,3 @@
-import json
-from datetime import datetime
-
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlmodel import Session, col, select
 
@@ -64,7 +61,6 @@ def update_user(
     for field, value in updates.items():
         setattr(user, field, value)
 
-    user.updated_at = datetime.utcnow()
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -94,6 +90,13 @@ def get_user_features(
 def get_user_applications(
     user_id: str, session: Session = Depends(get_session)
 ):
+    import traceback
+    try:
+     return _get_user_applications(user_id, session)
+    except Exception:
+     raise HTTPException(status_code=500, detail=traceback.format_exc())
+
+def _get_user_applications(user_id: str, session):
     if not session.get(User, user_id):
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -139,7 +142,7 @@ def get_user_applications(
                 "title": listing.title,
                 "location": listing.location,
                 "price": listing.price,
-                "listing_type": listing.listing_type,
+                "listing_type": getattr(listing, "listing_type", None),
             },
             "compatibility": compatibility,
         })
