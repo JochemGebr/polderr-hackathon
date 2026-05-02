@@ -26,6 +26,6 @@
   },
     "manifest": {
       "permissions": ["tabs", "activeTab", "scripting", "storage"],
-      "host_permissions": ["https://*.kamernet.nl/*", "https://kamernet.nl/*"]
+      "host_permissions": ["https://*.kamernet.nl/*", "https://kamernet.nl/*", "http://localhost:3001/*"]
     }
 }
