@@ -34,14 +34,14 @@ class Listing(SQLModel, table=True):
     price: Optional[int] = None  # monthly rent in cents
     location: Optional[str] = None
     listing_type: Optional[str] = None  # room | apartment | studio | etc.
+    accepted_person_id: Optional[str] = Field(default=None, foreign_key="person.person_id", index=True)
 
     applications: List["Application"] = Relationship(back_populates="listing")
-    # features attached to this listing (many-to-many)
     features: List["Feature"] = Relationship(
         back_populates="listings", link_model=ListingFeature
     )
-    # messages associated with this listing
     messages: List["Message"] = Relationship(back_populates="listing")
+    accepted_person: Optional["Person"] = Relationship(back_populates="accepted_listings")
 
 
 class User(SQLModel, table=True):
@@ -79,7 +79,7 @@ class Application(SQLModel, table=True):
 class Feature(SQLModel, table=True):
     feature_id: str = Field(default_factory=new_id, primary_key=True)
     name: str
-    description: str
+    description: Optional[str] = None
 
     listings: List["Listing"] = Relationship(
         back_populates="features", link_model=ListingFeature
