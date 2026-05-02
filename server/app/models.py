@@ -55,9 +55,7 @@ class User(SQLModel, table=True):
     age: Optional[int] = None
     has_pets: bool = False
     bio: Optional[str] = None  # free-text self description the LLM can use
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
+    
     applications: List["Application"] = Relationship(back_populates="user")
 
 
