@@ -6,6 +6,7 @@ ApplicationStatus = Literal["PENDING", "INVITED", "REJECTED", "GHOSTED", "ACCEPT
 
 
 class ListingCreate(BaseModel):
+    user_id: str
     external_id: str
     url: str
     title: str
@@ -51,20 +52,28 @@ class ApplicationUpdate(BaseModel):
     result_notes: Optional[str] = None
 
 
+class FeatureScore(BaseModel):
+    name: str
+    pretty_name: str        # display-ready: "Quiet Person" not "quiet_person"
+    score: float            # -1.0 (missing/weak) to +1.0 (strong match)
+
+
+class MatchResponse(BaseModel):
+    listing_id: str
+    match_score: float          # 0.0–1.0 overall compatibility
+    features: list[FeatureScore]
+
+
+class RecommendationResponse(BaseModel):
+    message: str
+
+
+# Kept for internal use by feature tag endpoints
 class ExtractedFeature(BaseModel):
     feature_id: str
     name: str
     description: Optional[str] = None
     score: float
-
-
-class ListingResponse(BaseModel):
-    listing_id: str
-    features: list[ExtractedFeature]
-
-
-class MotivationResponse(BaseModel):
-    motivation: str
 
 
 class FeatureCreate(BaseModel):

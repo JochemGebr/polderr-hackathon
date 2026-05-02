@@ -25,9 +25,6 @@ def find_similar_applications(
     limit: int = 5,
 ) -> list[dict[str, Any]]:
     listing_query = select(Listing.listing_id)
-    listing_type = getattr(listing, "listing_type", None)
-    if listing_type and hasattr(Listing, "listing_type"):
-        listing_query = listing_query.where(Listing.listing_type == listing_type)
     if listing.location:
         listing_query = listing_query.where(Listing.location == listing.location)
     if listing.price is not None:
@@ -129,16 +126,94 @@ def get_insights(
                 "score": tag.score,
             })
 
+    # Look up descriptions for counted features
+    def _with_desc(counter: Counter[str]) -> list[dict[str, Any]]:
+        result = []
+        for name, count in counter.most_common():
+            feat = session.exec(select(Feature).where(Feature.name == name)).first()
+            result.append({
+                "name": name,
+                "count": count,
+                "description": feat.description if feat else None,
+            })
+        return result
+
     return {
         "listing_features": listing_features,
         "user_features": user_features,
-        "accepted_features": [
-            {"name": n, "count": c} for n, c in accepted_counter.most_common()
-        ],
-        "rejected_features": [
-            {"name": n, "count": c} for n, c in rejected_counter.most_common()
-        ],
+        "accepted_features": _with_desc(accepted_counter),
+        "rejected_features": _with_desc(rejected_counter),
     }
+
+
+def _pretty(name: str) -> str:
+    return name.replace("_", " ").title()
+
+
+def compute_match(
+    insights: dict[str, Any],
+) -> tuple[float, list[dict[str, Any]]]:
+    """Return (match_score, features) where each feature has name, pretty_name,
+    and score in [-1.0, +1.0]. Positive = strength, negative = weakness."""
+    user_names = {f["name"] for f in insights["user_features"]}
+    accepted = insights["accepted_features"]  # [{name, count, description}]
+
+    if accepted:
+        max_count = max(f["count"] for f in accepted)
+        total_weight = sum(f["count"] for f in accepted)
+        strength_weight = sum(f["count"] for f in accepted if f["name"] in user_names)
+        match_score = round(strength_weight / total_weight, 3) if total_weight else 0.0
+
+        features = [
+            {
+                "name": f["name"],
+                "pretty_name": _pretty(f["name"]),
+                "score": round(
+                    (f["count"] / max_count) if f["name"] in user_names
+                    else -(f["count"] / max_count),
+                    3,
+                ),
+            }
+            for f in sorted(accepted, key=lambda f: -f["count"])
+        ]
+    else:
+        # Cold-start: use listing × user feature overlap
+        lf_list = insights["listing_features"]
+        uf_score_map = {f["name"]: f["score"] for f in insights["user_features"]}
+        max_lf = max((f["score"] for f in lf_list), default=1) or 1
+        total = sum(f["score"] for f in lf_list) or 1
+        matched = sum(f["score"] * uf_score_map.get(f["name"], 0) for f in lf_list)
+        match_score = round(min(matched / total, 1.0), 3)
+
+        features = [
+            {
+                "name": f["name"],
+                "pretty_name": _pretty(f["name"]),
+                "score": round(
+                    (f["score"] / max_lf) if f["name"] in user_names
+                    else -(f["score"] / max_lf),
+                    3,
+                ),
+            }
+            for f in sorted(lf_list, key=lambda f: -f["score"])
+        ]
+
+    # Select up to 5 features: default 3 positive + 2 negative; pad either
+    # side if the other side doesn't have enough.
+    positives = sorted([f for f in features if f["score"] > 0], key=lambda f: -f["score"])
+    negatives = sorted([f for f in features if f["score"] < 0], key=lambda f: f["score"])
+
+    n_pos = min(3, len(positives))
+    n_neg = min(2, len(negatives))
+    shortfall = 5 - n_pos - n_neg
+    if shortfall > 0:
+        extra_pos = min(shortfall, len(positives) - n_pos)
+        n_pos += extra_pos
+        shortfall -= extra_pos
+    if shortfall > 0:
+        n_neg += min(shortfall, len(negatives) - n_neg)
+
+    return match_score, positives[:n_pos] + negatives[:n_neg]
 
 
 def get_principles() -> str:
