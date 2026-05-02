@@ -337,7 +337,7 @@ def seed() -> None:
         # create features first (listing + applicant traits)
         feature_objs: dict[str, Feature] = {}
         for name, desc in {**listing_features, **applicant_features}.items():
-            f = Feature(name=name, description=description)
+            f = Feature(name=name, description=desc)
             session.add(f)
             session.commit()
             session.refresh(f)
