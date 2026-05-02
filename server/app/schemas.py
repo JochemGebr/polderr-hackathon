@@ -19,6 +19,7 @@ class ListingCreate(BaseModel):
 
 class UserCreate(BaseModel):
     name: Optional[str] = None
+    gender: Optional[str] = None
     occupation: Optional[str] = None
     income: Optional[int] = None
     age: Optional[int] = None
@@ -29,6 +30,7 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
+    gender: Optional[str] = None
     occupation: Optional[str] = None
     income: Optional[int] = None
     age: Optional[int] = None
