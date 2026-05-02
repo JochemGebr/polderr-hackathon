@@ -10,6 +10,21 @@ def new_id() -> str:
     return str(uuid.uuid4())
 
 
+class ListingFeature(SQLModel, table=True):
+    listing_id: str = Field(foreign_key="listing.listing_id", primary_key=True)
+    feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
+
+
+class PersonFeature(SQLModel, table=True):
+    person_id: str = Field(foreign_key="person.person_id", primary_key=True)
+    feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
+
+
+class MessageFeature(SQLModel, table=True):
+    message_id: str = Field(foreign_key="message.message_id", primary_key=True)
+    feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
+
+
 class Listing(SQLModel, table=True):
     listing_id: str = Field(default_factory=new_id, primary_key=True)
     external_id: str = Field(unique=True, index=True)
@@ -23,7 +38,7 @@ class Listing(SQLModel, table=True):
     applications: List["Application"] = Relationship(back_populates="listing")
     # features attached to this listing (many-to-many)
     features: List["Feature"] = Relationship(
-        back_populates="listings", link_model="ListingFeature"
+        back_populates="listings", link_model=ListingFeature
     )
     # messages associated with this listing
     messages: List["Message"] = Relationship(back_populates="listing")
@@ -67,19 +82,14 @@ class Feature(SQLModel, table=True):
     description: str
 
     listings: List["Listing"] = Relationship(
-        back_populates="features", link_model="ListingFeature"
+        back_populates="features", link_model=ListingFeature
     )
     messages: List["Message"] = Relationship(
-        back_populates="features", link_model="MessageFeature"
+        back_populates="features", link_model=MessageFeature
     )
     persons: List["Person"] = Relationship(
-        back_populates="features", link_model="PersonFeature"
+        back_populates="features", link_model=PersonFeature
     )
-
-
-class ListingFeature(SQLModel, table=True):
-    listing_id: str = Field(foreign_key="listing.listing_id", primary_key=True)
-    feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
 
 
 class Person(SQLModel, table=True):
@@ -92,14 +102,9 @@ class Person(SQLModel, table=True):
 
     messages: List["Message"] = Relationship(back_populates="person")
     features: List[Feature] = Relationship(
-        back_populates="persons", link_model="PersonFeature"
+        back_populates="persons", link_model=PersonFeature
     )
     accepted_listings: List[Listing] = Relationship(back_populates="accepted_person")
-
-
-class PersonFeature(SQLModel, table=True):
-    person_id: str = Field(foreign_key="person.person_id", primary_key=True)
-    feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
 
 
 class Message(SQLModel, table=True):
@@ -111,10 +116,5 @@ class Message(SQLModel, table=True):
     person: Optional[Person] = Relationship(back_populates="messages")
     listing: Optional[Listing] = Relationship(back_populates="messages")
     features: List[Feature] = Relationship(
-        back_populates="messages", link_model="MessageFeature"
+        back_populates="messages", link_model=MessageFeature
     )
-
-
-class MessageFeature(SQLModel, table=True):
-    message_id: str = Field(foreign_key="message.message_id", primary_key=True)
-    feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
