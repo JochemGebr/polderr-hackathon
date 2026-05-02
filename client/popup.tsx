@@ -4,10 +4,16 @@ import { extractKamernetListingFromTab } from "./lib/extractKamernetListing"
 
 const API_BASE_URL = "http://localhost:3001"
 
+interface ExtractedFeature {
+  feature_id: string
+  name: string
+  description?: string | null
+  score: number
+}
+
 interface ListingResponse {
   listing_id: string
-  title: string
-  url: string
+  features: ExtractedFeature[]
 }
 
 interface UserResponse {
@@ -17,8 +23,7 @@ interface UserResponse {
 interface AnalysisResult {
   listingId: string
   userId: string
-  title: string
-  url: string
+  features: ExtractedFeature[]
 }
 
 interface RecommendationResponse {
@@ -99,8 +104,13 @@ function IndexPopup() {
       try {
         const parsedUrl = new URL(url)
         const isKamernetHost = parsedUrl.hostname.endsWith("kamernet.nl")
-        const isListingPath = /^\/huren\/[^/]+\/[^/]+\/kamer-\d+/.test(parsedUrl.pathname)
-        setIsKamernet(isKamernetHost && isListingPath)
+        const isNlListingPath = /^\/huren\/[^/]+\/[^/]+\/kamer-\d+/.test(
+          parsedUrl.pathname
+        )
+        const isEnListingPath = /^\/en\/for-rent\/[^/]+\/[^/]+\/[^/]+/.test(
+          parsedUrl.pathname
+        )
+        setIsKamernet(isKamernetHost && (isNlListingPath || isEnListingPath))
       } catch {
         setIsKamernet(false)
       }
@@ -119,6 +129,7 @@ function IndexPopup() {
 
       setPageText(extracted.text)
       console.log(extracted)
+      console.log(buildExternalId(tab.url))
 
       const userId = await getOrCreateUserId()
 
@@ -131,12 +142,8 @@ function IndexPopup() {
           description: extracted.text,
           price: extracted.price,
           location: extracted.location,
-          listing_type: extracted.listing_type,
-          raw: {
-            source: "browser-extension",
-            extractedText: extracted.text,
-            ...extracted.raw
-          },
+          details: extracted.details,
+          ideal_tenant: extracted.idealTenant,
           accepted_person_id: null
         })
       })
@@ -144,15 +151,13 @@ function IndexPopup() {
       setAnalysis({
         listingId: listing.listing_id,
         userId,
-        title: listing.title,
-        url: listing.url
+        features: listing.features
       })
 
       setRecommendation(null)
       setEditableMessage("")
     } catch (err: any) {
       console.error(err)
-      setError(err.message || "An unexpected error occurred.")
     } finally {
       setLoadingState("idle")
     }
@@ -264,9 +269,18 @@ function IndexPopup() {
       {analysis && !recommendation && (
         <div className="popup-card">
           <div className="popup-section">
-            <p className="popup-section-title">Listing ready</p>
-            <p className="popup-score">{analysis.title}</p>
-            <p className="popup-disclaimer">{analysis.url}</p>
+            <p className="popup-section-title">Detected features</p>
+            {analysis.features.length > 0 ? (
+              <div className="popup-badges">
+                {analysis.features.map((feature) => (
+                  <span key={feature.feature_id} className="popup-badge">
+                    {feature.name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="popup-disclaimer">No features detected yet.</p>
+            )}
           </div>
 
           <button 

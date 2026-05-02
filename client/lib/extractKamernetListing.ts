@@ -4,8 +4,8 @@ export interface ExtractedKamernetListing {
   url: string
   price: number | null
   location: string | null
-  listing_type: string | null
-  
+  details: string | null
+  idealTenant: string | null
 }
 
 export const extractKamernetListingFromTab = async (
@@ -34,45 +34,29 @@ export const extractKamernetListingFromTab = async (
         return Number.isFinite(parsed) ? parsed : null
       }
 
-const getLocation = () => {
-  const locationDiv =
-    document.querySelector<HTMLElement>("div[class^='Header_locationDetails_']") ??
-    document.querySelector<HTMLElement>("div[class*=' Header_locationDetails_']")
+    const getLocation = () => {
+    const locationDiv =
+        document.querySelector<HTMLElement>("div[class^='Header_locationDetails_']") ??
+        document.querySelector<HTMLElement>("div[class*=' Header_locationDetails_']")
 
-  const locationFromDiv = cleanText(locationDiv?.innerText)
+    return cleanText(locationDiv?.innerText) || null
+    }
 
-  if (locationFromDiv) {
-    return locationFromDiv
-  }
+    const getDetails = () => {
+        const detailsRoot =
+            document.querySelector<HTMLElement>("[class^='Details_root_']") ??
+            document.querySelector<HTMLElement>("[class*=' Details_root_']")
 
-  const anchors = Array.from(document.querySelectorAll<HTMLAnchorElement>("a"))
-
-  const locationAnchor = anchors.find((anchor) => {
-    const text = cleanText(anchor.innerText)
-    const href = anchor.href
-
-    return (
-      text.length > 0 &&
-      href.includes("/huren/") &&
-      !href.includes("kamer-")
-    )
-  })
-
-  return cleanText(locationAnchor?.innerText) || null
-}
-
-      const getListingType = (url: string) => {
-        try {
-          const parsedUrl = new URL(url)
-          const parts = parsedUrl.pathname.split("/").filter(Boolean)
-
-          // Example:
-          // /huren/amsterdam/kamer/kamer-123456
-          return parts[2] ?? null
-        } catch {
-          return null
+        return cleanText(detailsRoot?.innerText) || null
         }
-      }
+
+    const getIdeal = () => {
+        const idealTenantRoot =
+            document.querySelector<HTMLElement>("[class^='IdealTenant_root_']") ??
+            document.querySelector<HTMLElement>("[class*=' IdealTenant_root_']")
+
+        return cleanText(idealTenantRoot?.innerText) || null
+        }
 
       const url = window.location.href
 
@@ -119,6 +103,8 @@ const getLocation = () => {
         url,
         price: getPrice(),
         location: getLocation(),
+        details: getDetails(),
+        idealTenant: getIdeal()
       }
     }
   })
