@@ -4,16 +4,16 @@ import { extractKamernetListingFromTab } from "./lib/extractKamernetListing"
 
 const API_BASE_URL = "http://localhost:3001"
 
-interface ExtractedFeature {
-  feature_id: string
+interface MatchFeature {
   name: string
-  description?: string | null
+  pretty_name: string
   score: number
 }
 
 interface ListingResponse {
   listing_id: string
-  features: ExtractedFeature[]
+  match_score: number
+  features: MatchFeature[]
 }
 
 interface UserResponse {
@@ -23,19 +23,18 @@ interface UserResponse {
 interface AnalysisResult {
   listingId: string
   userId: string
-  features: ExtractedFeature[]
+  matchScore: number
+  features: MatchFeature[]
 }
 
 interface RecommendationResponse {
   message: string
-  key_strengths: string[]
-  addressed_concerns: string[]
 }
 
 function IndexPopup() {
   const [isKamernet, setIsKamernet] = useState<boolean | null>(null)
   const [loadingState, setLoadingState] = useState<"idle" | "analysing" | "generating">("idle")
-  
+  const [error, setError] = useState<string | null>(null)  
   
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null)
@@ -62,11 +61,11 @@ function IndexPopup() {
   }
 
   const buildExternalId = (url: string | undefined) => {
-    if (!url) return `kamernet-${Date.now()}`
-    const match = url.match(/kamer-(\d+)/)
-    if (match) return `kamernet-${match[1]}`
+    if (!url) return `${Date.now()}`
+    const match = url.match(/(\d+)(?:\/)?$/)
+    if (match) return match[1]
     const sanitized = url.replace(/[^a-zA-Z0-9_-]/g, "_").slice(-60)
-    return `kamernet-${sanitized}`
+    return sanitized
   }
 
   const getOrCreateUserId = async () => {
@@ -131,11 +130,12 @@ function IndexPopup() {
       console.log(extracted)
       console.log(buildExternalId(tab.url))
 
-      const userId = await getOrCreateUserId()
+      const userId = "00000000-0000-0000-0000-000000000001"
 
       const listing = await apiFetch<ListingResponse>("/api/listings", {
         method: "POST",
         body: JSON.stringify({
+          user_id: userId,
           external_id: buildExternalId(tab.url),
           url: extracted.url,
           title: extracted.title,
@@ -151,6 +151,7 @@ function IndexPopup() {
       setAnalysis({
         listingId: listing.listing_id,
         userId,
+        matchScore: listing.match_score,
         features: listing.features
       })
 
@@ -164,15 +165,29 @@ function IndexPopup() {
   }
 
   const handleGenerate = async () => {
-    if (!analysis || !pageText) return
+    if (!analysis) return
+
+    setError(null)
     setLoadingState("generating")
 
     try {
       const data = await apiFetch<RecommendationResponse>(
-        `/api/recommendations?listing_id=${analysis.listingId}&user_id=${analysis.userId}`
+        `/api/recommendations?listing_id=${encodeURIComponent(
+          analysis.listingId
+        )}&user_id=${encodeURIComponent(analysis.userId)}`,
+        {
+          method: "POST"
+        }
       )
-      setRecommendation(data)
+
+      setRecommendation({
+        message: data.message
+      })
+
       setEditableMessage(data.message)
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || "Could not generate the message.")
     } finally {
       setLoadingState("idle")
     }
@@ -230,7 +245,7 @@ function IndexPopup() {
       <div className="popup-header">
         <div>
           <h2 className="popup-title">CrowdApply</h2>
-          <p className="popup-subtitle">Know what to say, know what happened.</p>
+          <p className="popup-subtitle">know what to say, know what happened.</p>
         </div>
         <button
           className="popup-icon-button"
@@ -268,19 +283,44 @@ function IndexPopup() {
 
       {analysis && !recommendation && (
         <div className="popup-card">
-          <div className="popup-section">
-            <p className="popup-section-title">Detected features</p>
-            {analysis.features.length > 0 ? (
-              <div className="popup-badges">
-                {analysis.features.map((feature) => (
-                  <span key={feature.feature_id} className="popup-badge">
-                    {feature.name}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="popup-disclaimer">No features detected yet.</p>
-            )}
+          <div className="popup-impact-card">
+            <div className="popup-impact-header">
+              <p className="popup-impact-title">What correlates with acceptance</p>
+              <p className="popup-impact-score">
+                Match score: {Math.round(analysis.matchScore * 100)}%
+              </p>
+            </div>
+            <div className="popup-impact-list">
+              {analysis.features.map((feature) => {
+                const percent = Math.round(Math.abs(feature.score) * 100)
+                const isPositive = feature.score >= 0
+                return (
+                  <div key={feature.name} className="popup-impact-row">
+                    <span className="popup-impact-label">{feature.pretty_name}</span>
+                    <div className="popup-impact-bar">
+                      <div
+                        className={
+                          isPositive
+                            ? "popup-impact-fill popup-impact-fill--positive"
+                            : "popup-impact-fill popup-impact-fill--negative"
+                        }
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                    <span
+                      className={
+                        isPositive
+                          ? "popup-impact-value popup-impact-value--positive"
+                          : "popup-impact-value popup-impact-value--negative"
+                      }
+                    >
+                      {isPositive ? "+" : "-"}
+                      {percent}%
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           <button 
@@ -299,24 +339,6 @@ function IndexPopup() {
           <p className="popup-message-hint">
             Make sure to review and edit before sending!
           </p>
-          <div className="popup-section">
-            <p className="popup-section-title">Key strengths</p>
-            <div className="popup-badges">
-              {recommendation.key_strengths.map((strength, i) => (
-                <span key={i} className="popup-badge">{strength}</span>
-              ))}
-            </div>
-          </div>
-          {recommendation.addressed_concerns.length > 0 ? (
-            <div className="popup-section">
-              <p className="popup-section-title">Concerns addressed</p>
-              <ul className="popup-list">
-                {recommendation.addressed_concerns.map((concern, i) => (
-                  <li key={i} className="popup-list-item">{concern}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
           <textarea
             className="popup-textarea"
             value={editableMessage}
@@ -324,7 +346,7 @@ function IndexPopup() {
             rows={8}
           />
           <div className="popup-action-row">
-            <button className="popup-button popup-button-secondary" onClick={copySuggestion}>
+            <button className="popup-button popup-button-primary" onClick={copySuggestion}>
               {copied ? "Copied!" : "Copy message"}
             </button>
           </div>
