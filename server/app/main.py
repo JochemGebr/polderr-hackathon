@@ -1,14 +1,20 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import create_tables
 from app.routers import applications, listings, recommendations, users
 
+from app import seed
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_tables()
+    created = create_tables()
+    # If a fresh SQLite DB file was created, run the seeder to populate dummy data
+    if created:
+        seed.seed()
+      
     yield
 
 
