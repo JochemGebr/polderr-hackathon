@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Remove-Item -Recurse -Force \"C:\\\\Users\\\\bru90\\\\projects\\\\polderrhackathon\\\\polderr-hackathon\\\\server\\\\package.json\", \"C:\\\\Users\\\\bru90\\\\projects\\\\polderrhackathon\\\\polderr-hackathon\\\\server\\\\tsconfig.json\", \"C:\\\\Users\\\\bru90\\\\projects\\\\polderrhackathon\\\\polderr-hackathon\\\\server\\\\prisma\", \"C:\\\\Users\\\\bru90\\\\projects\\\\polderrhackathon\\\\polderr-hackathon\\\\server\\\\src\" -ErrorAction SilentlyContinue)",
+      "Bash(Write-Output \"Cleaned\")"
+    ]
+  }
+}
