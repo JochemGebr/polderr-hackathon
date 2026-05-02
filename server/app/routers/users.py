@@ -19,8 +19,7 @@ def create_user(body: UserCreate, session: Session = Depends(get_session)):
         income=body.income,
         age=body.age,
         has_pets=body.has_pets,
-        bio=body.bio,
-        profile=json.dumps(body.profile) if body.profile else None,
+        bio=body.bio
     )
     session.add(user)
     session.commit()
@@ -44,8 +43,6 @@ def update_user(user_id: str, body: UserUpdate, session: Session = Depends(get_s
 
     updates = body.model_dump(exclude_unset=True)
     for field, value in updates.items():
-        if field == "profile":
-            value = json.dumps(value) if value is not None else None
         setattr(user, field, value)
 
     user.updated_at = datetime.utcnow()

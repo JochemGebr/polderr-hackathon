@@ -93,38 +93,3 @@ def upsert_listing(body: ListingCreate, session: Session = Depends(get_session))
     # New listing (or existing with no features yet) — run LLM extraction
     features = _extract_and_tag(session, listing)
     return ListingResponse(listing_id=listing.listing_id, features=features)
-
-
-@router.get("/{listing_id}", response_model=ListingResponse)
-def get_listing(listing_id: str, session: Session = Depends(get_session)):
-    listing = session.get(Listing, listing_id)
-    if not listing:
-        raise HTTPException(status_code=404, detail="Listing not found")
-    features = _get_features(session, listing_id)
-    return ListingResponse(listing_id=listing.listing_id, features=features)
-
-
-@router.post("/{listing_id}/features/{feature_id}", status_code=201)
-def tag_feature(listing_id: str, feature_id: str, session: Session = Depends(get_session)):
-    if not session.get(Listing, listing_id):
-        raise HTTPException(status_code=404, detail="Listing not found")
-    if not session.get(Feature, feature_id):
-        raise HTTPException(status_code=404, detail="Feature not found")
-
-    existing = session.get(ListingFeature, (listing_id, feature_id))
-    if existing:
-        return existing
-
-    tag = ListingFeature(listing_id=listing_id, feature_id=feature_id)
-    session.add(tag)
-    session.commit()
-    return tag
-
-
-@router.delete("/{listing_id}/features/{feature_id}", status_code=204)
-def untag_feature(listing_id: str, feature_id: str, session: Session = Depends(get_session)):
-    tag = session.get(ListingFeature, (listing_id, feature_id))
-    if not tag:
-        raise HTTPException(status_code=404, detail="Tag not found")
-    session.delete(tag)
-    session.commit()

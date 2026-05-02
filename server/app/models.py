@@ -55,7 +55,6 @@ class User(SQLModel, table=True):
     age: Optional[int] = None
     has_pets: bool = False
     bio: Optional[str] = None  # free-text self description the LLM can use
-    profile: Optional[str] = None  # JSON blob for extra structured data
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
