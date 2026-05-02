@@ -1,4 +1,4 @@
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app.db import engine
 from app.models import (
@@ -11,18 +11,6 @@ from app.models import (
     Person,
     PersonFeature,
 )
-
-
-def _get_or_create_feature(session: Session, name: str, description: str) -> Feature:
-    stmt = select(Feature).where(Feature.name == name)
-    existing = session.exec(stmt).first()
-    if existing:
-        return existing
-    f = Feature(name=name, description=description)
-    session.add(f)
-    session.commit()
-    session.refresh(f)
-    return f
 
 
 def seed() -> None:
@@ -349,7 +337,10 @@ def seed() -> None:
         # create features first (listing + applicant traits)
         feature_objs: dict[str, Feature] = {}
         for name, desc in {**listing_features, **applicant_features}.items():
-            f = _get_or_create_feature(session, name, desc)
+            f = Feature(name=name, description=description)
+            session.add(f)
+            session.commit()
+            session.refresh(f)
             feature_objs[name] = f
 
         # create listings and link listing features
@@ -425,4 +416,3 @@ def seed() -> None:
             session.commit()
 
     print("Seed complete: inserted features and listings.")
-
