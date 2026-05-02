@@ -37,5 +37,7 @@ def get_motivation(
                 "score": tag.score,
             })
 
-    motivation = llm_service.generate_motivation(listing, user, listing_features)
+    motivation = llm_service.generate_motivation(
+        listing, user, listing_features, session
+    )
     return MotivationResponse(motivation=motivation)
