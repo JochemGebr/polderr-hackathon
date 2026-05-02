@@ -2,68 +2,65 @@ from typing import Any
 
 from app.models import Listing, User
 
-# ── Interface contract for the LLM teammate ──────────────────────────────────
+# ── Interface contract for the LLM teammate ───────────────────────────────────
 #
-# extract_listing_features: parse a listing into structured signals
-# generate_recommendation:  produce a personalised application message
+# extract_listing_features  →  identify 5 key features from the listing text
+# generate_motivation       →  write a personalised application message
 #
-# Both functions receive everything they need. Implement by replacing the stubs
-# below with real LLM calls (Claude, OpenAI, etc.). No other files need changes.
+# Replace the stubs below with real LLM calls. No other files need changes.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def extract_listing_features(listing: Listing) -> dict[str, Any]:
+def extract_listing_features(listing: Listing) -> list[dict[str, Any]]:
     """
-    Parse listing.description (and listing.raw) and return structured signals.
+    Analyse listing.description and return exactly 5 extracted features.
 
-    Expected output shape:
-    {
-        "highlights": list[str],       # things landlord emphasises positively
-        "dealbreakers": list[str],     # hard requirements (no pets, no students…)
-        "preferred_profile": list[str],# what kind of tenant they're looking for
-        "landlord_tone": str,          # "formal" | "casual" | "corporate"
-        "required_income_multiplier": float | None,  # e.g. 3.0 = 3× rent
-    }
+    Return format — list of 5 dicts:
+    [
+        {
+            "name": str,          # snake_case identifier, e.g. "prefers_quiet_tenant"
+            "description": str,   # one sentence explaining what the landlord signals
+            "score": float,       # 0.0–1.0 relevance/confidence score
+        },
+        ...
+    ]
+
+    Suggested prompt approach:
+      - Ask the LLM to read the listing and identify the 5 most important signals
+        a potential tenant should know about (requirements, preferences, dealbreakers)
+      - Return structured JSON
     """
     # TODO: implement with your LLM of choice
-    return {
-        "highlights": [],
-        "dealbreakers": [],
-        "preferred_profile": [],
-        "landlord_tone": "formal",
-        "required_income_multiplier": None,
-    }
+    return [
+        {"name": f"stub_feature_{i}", "description": "stub — implement extract_listing_features", "score": 0.0}
+        for i in range(1, 6)
+    ]
 
 
-def generate_recommendation(
+def generate_motivation(
     listing: Listing,
     user: User,
-    similar_applications: list[dict[str, Any]],
-    principles: str,
-) -> dict[str, Any]:
+    listing_features: list[dict[str, Any]],
+) -> str:
     """
-    Write a personalised application message and surface key talking points.
+    Write a personalised application motivation text.
 
     Inputs:
-      listing               — the target listing (description, features, raw)
-      user                  — the applicant's profile (bio, income, occupation…)
-      similar_applications  — past application-outcome pairs for few-shot context
-      principles            — contents of knowledge/principles.md (stable rules)
+      listing          — title, description, location, price, listing_type
+      user             — name, occupation, income, age, has_pets, bio, profile
+      listing_features — the 5 extracted features with scores (from extract_listing_features)
 
-    Expected output shape:
-    {
-        "message": str,              # ready-to-send application text
-        "key_strengths": list[str],  # user strengths to highlight
-        "addressed_concerns": list[str],  # landlord concerns the message tackles
-    }
+    Suggested prompt approach:
+      - System: you are helping a tenant write a compelling Kamernet application
+      - Context: listing details + extracted feature signals
+      - User profile: what makes this applicant a good match
+      - Task: write a concise, personalised message in Dutch (or English) that addresses
+        the landlord's signals and highlights the applicant's strengths
+
+    Return: plain text string ready to send to the landlord.
     """
     # TODO: implement with your LLM of choice
-    # Suggested prompt structure:
-    #   1. System: role + principles doc
-    #   2. Few-shot: similar_applications examples with outcome labels
-    #   3. User turn: listing description + extracted_features + user profile
-    return {
-        "message": f"[stub] Personalised message for {user.name or 'applicant'} → {listing.title}",
-        "key_strengths": ["fill in after LLM integration"],
-        "addressed_concerns": [],
-    }
+    return (
+        f"[stub] Motivation for {user.name or 'applicant'} "
+        f"applying to '{listing.title}'. Implement generate_motivation in llm_service.py."
+    )

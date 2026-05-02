@@ -33,7 +33,7 @@ app.include_router(applications.router, prefix="/api")
 app.include_router(features.router, prefix="/api")
 app.include_router(persons.router, prefix="/api")
 app.include_router(messages.router, prefix="/api")
-app.include_router(recommendations.router, prefix="/api")
+app.include_router(recommendations.router, prefix="/api")  # serves GET /api/motivation
 
 
 @app.get("/health")

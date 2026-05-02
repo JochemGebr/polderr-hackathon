@@ -49,6 +49,22 @@ class ApplicationUpdate(BaseModel):
     result_notes: Optional[str] = None
 
 
+class ExtractedFeature(BaseModel):
+    feature_id: str
+    name: str
+    description: Optional[str] = None
+    score: float
+
+
+class ListingResponse(BaseModel):
+    listing_id: str
+    features: list[ExtractedFeature]
+
+
+class MotivationResponse(BaseModel):
+    motivation: str
+
+
 class FeatureCreate(BaseModel):
     name: str
     description: Optional[str] = None
