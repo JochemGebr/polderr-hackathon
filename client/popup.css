@@ -1,14 +1,38 @@
-.popup-container {
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap");
+
+html,
+body {
+  margin: 0;
+  padding: 0;
   width: 396px;
+  height: 100px;
+  
+}
+
+.popup-container {
+  width: 100%;
+  min-height: 100vh;
   padding: 18px;
   box-sizing: border-box;
-  font-family: Manrope, "Segoe UI", Tahoma, sans-serif;
+  font-family: "Montserrat", "Segoe UI", Tahoma, sans-serif;
   color: #1f2937;
-  background: linear-gradient(180deg, #f7f8fa 0%, #f1f3f6 100%);
+  background: linear-gradient(180deg, #f6f6f6 0%, #f1f3f6 100%);
 }
 
 .popup-header {
   margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.popup-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .popup-title {
@@ -25,8 +49,28 @@
   color: #6b7280;
 }
 
+.popup-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid #d7dce3;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.popup-icon-button:hover {
+  background: #eef2f7;
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 6px rgba(15, 23, 42, 0.08);
+}
+
 .popup-heading {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 16px;
   font-weight: 600;
   color: #111827;
@@ -129,11 +173,16 @@
 
 .popup-button-primary {
   width: 100%;
-  background: #1d4ed8;
-  color: #ffffff;
+  background: #00163f;
+  color: #e2e8f0;
   padding: 10px 12px;
-  box-shadow: 0 6px 14px rgba(29, 78, 216, 0.25);
+  box-shadow: 0 6px 14px rgba(0, 22, 63, 0.25);
   transition: background 0.2s, box-shadow 0.2s;
+}
+
+.popup-button-primary:hover:not(:disabled) {
+  background: #001133;
+  box-shadow: 0 8px 18px rgba(0, 22, 63, 0.3);
 }
 
 .popup-button-secondary {
@@ -143,6 +192,13 @@
   padding: 8px 12px;
   font-size: 13px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.popup-button-secondary:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 6px rgba(15, 23, 42, 0.08);
 }
 
 .popup-button-disabled {
