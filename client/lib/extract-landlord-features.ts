@@ -5,15 +5,8 @@ export type LandlordFeatures = Record<string, number>
 
 export async function extractLandlordFeatures(
   text: string,
-  apiKey: string,
-  existingKeys: string[] = []
+  apiKey: string
 ): Promise<LandlordFeatures> {
-  const existingKeysSection =
-    existingKeys.length > 0
-      ? `\nPrefer reusing these existing keys over inventing synonyms:\n` +
-        `${existingKeys.join(", ")}\n`
-      : ""
-
   const prompt = `You are analyzing a rental applicant's text to identify traits
 that landlords typically care about, or you are processing a rental description
 for the same kind of traits.
@@ -30,7 +23,8 @@ Extract key-value pairs where:
   - -1.0 = very strong negative signal for landlord (e.g. loud parties, messy)
 
 Only include traits that are actually evidenced in the text. Use snake_case
-for keys.${existingKeysSection}
+for keys.
+
 Respond ONLY with valid JSON, no explanation, no code fences \`\`\`. Example:
 {"cleanliness": 0.8, "noise_level": -0.6, "party_behavior": -0.9}
 
