@@ -142,7 +142,6 @@ def _get_user_applications(user_id: str, session):
                 "title": listing.title,
                 "location": listing.location,
                 "price": listing.price,
-                "listing_type": getattr(listing, "listing_type", None),
             },
             "compatibility": compatibility,
         })
