@@ -250,11 +250,6 @@ function IndexPopup() {
         </button>
       </div>
 
-      {error && (
-        <div className="popup-error">
-          <p className="popup-error-text">{error}</p>
-        </div>
-      )}
 
       {!analysis && (
         <button 
