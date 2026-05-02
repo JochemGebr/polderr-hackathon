@@ -11,469 +11,313 @@ from app.models import (
     Person,
     PersonFeature,
     User,
+    UserFeature,
 )
 
-SEED_USER_ID = "00000000-0000-0000-0000-000000000001"
+# Hardcoded test user ID — use this in the extension / Postman while testing
+TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
+
+# ── Feature vocabulary ────────────────────────────────────────────────────────
+# Same names are used for both ListingFeature (what the landlord signals they
+# want) and PersonFeature/UserFeature (what the applicant has).
+# The LLM is guided to reuse these keys, so they will overlap with what gets
+# extracted from real Kamernet listing descriptions.
+
+FEATURES = {
+    "quiet_person":           "Prefers quiet, respectful living — no parties or loud noise",
+    "studious":               "Academically focused, often studies at home",
+    "student_lifestyle":      "Student lifestyle — university-focused routine",
+    "cooking_enthusiast":     "Cooks at home regularly, treats shared kitchen well",
+    "likes_reading":          "Quiet hobbies — reads at home, calm evenings",
+    "international_background": "International background, English-speaking",
+    "family_oriented":        "Family-oriented or planning a family, stable long-term tenant",
+    "high_income":            "Higher income — professional or executive salary",
+    "professional_career":    "Working professional with stable corporate career",
+    "social_lifestyle":       "Active social life, frequents gyms and coworking spaces",
+    "likes_party":            "Enjoys hosting parties and gatherings at home",
+    "plays_guitar":           "Plays guitar or other loud instruments at home",
+}
+
+# ── Seed listings ─────────────────────────────────────────────────────────────
+# Group A: Delft-type — student-friendly, quiet, near campus
+#   ListingFeature tags: quiet_person, student_lifestyle
+#   → similar to the real Delft test listing (LLM should extract these from it)
+#
+# Group B: Rotterdam-type — premium, professional
+#   ListingFeature tags: high_income, professional_career
+#   → similar to the real Rotterdam test listing
+
+LISTINGS = [
+    # ── Group A: Delft-type ──────────────────────────────────────────────────
+    {
+        "external_id": "seed-delft-1",
+        "url": "https://example.org/seed/delft-1",
+        "title": "Quiet studio near TU Delft campus",
+        "description": "Peaceful studio for a serious student or young professional. "
+                       "Quiet building, studious neighbours. No parties.",
+        "ideal_tenant": "Quiet, studious student or working student. No pets.",
+        "price": 850.0,
+        "location": "Delft",
+        "listing_features": ["quiet_person", "student_lifestyle"],
+        "applications": [
+            {
+                "name": "Emma S.",
+                "status": "ACCEPTED",
+                "person_features": ["quiet_person", "studious", "likes_reading", "international_background"],
+            },
+            {
+                "name": "Sofia K.",
+                "status": "ACCEPTED",
+                "person_features": ["quiet_person", "studious", "family_oriented", "cooking_enthusiast"],
+            },
+            {
+                "name": "Tom Party",
+                "status": "REJECTED",
+                "person_features": ["likes_party"],
+            },
+        ],
+    },
+    {
+        "external_id": "seed-delft-2",
+        "url": "https://example.org/seed/delft-2",
+        "title": "Furnished room, close to Delft train station",
+        "description": "Cosy room for students. Utilities included. "
+                       "House values quiet evenings and a tidy shared kitchen.",
+        "ideal_tenant": "Female student or working student, quiet, responsible.",
+        "price": 900.0,
+        "location": "Delft",
+        "listing_features": ["quiet_person", "student_lifestyle"],
+        "applications": [
+            {
+                "name": "Yuki T.",
+                "status": "ACCEPTED",
+                "person_features": ["quiet_person", "international_background", "likes_reading", "student_lifestyle"],
+            },
+            {
+                "name": "Alice M.",
+                "status": "ACCEPTED",
+                "person_features": ["quiet_person", "studious", "international_background", "family_oriented"],
+            },
+            {
+                "name": "Guitar Greg",
+                "status": "REJECTED",
+                "person_features": ["plays_guitar"],
+            },
+        ],
+    },
+    {
+        "external_id": "seed-delft-3",
+        "url": "https://example.org/seed/delft-3",
+        "title": "Room in shared house, Delft city centre",
+        "description": "Calm shared house, two current tenants. "
+                       "Looking for someone quiet who respects shared spaces.",
+        "ideal_tenant": "Studious or working student. No loud music.",
+        "price": 800.0,
+        "location": "Delft",
+        "listing_features": ["quiet_person", "student_lifestyle"],
+        "applications": [
+            {
+                "name": "Mieke V.",
+                "status": "ACCEPTED",
+                "person_features": ["quiet_person", "studious", "likes_reading"],
+            },
+            {
+                "name": "Clara B.",
+                "status": "ACCEPTED",
+                "person_features": ["quiet_person", "family_oriented", "cooking_enthusiast", "student_lifestyle"],
+            },
+            {
+                "name": "Sara Loud",
+                "status": "REJECTED",
+                "person_features": ["likes_party"],
+            },
+        ],
+    },
+
+    # ── Group B: Rotterdam-type ──────────────────────────────────────────────
+    {
+        "external_id": "seed-rotterdam-1",
+        "url": "https://example.org/seed/rotterdam-1",
+        "title": "Premium room in luxury apartment, Rotterdam",
+        "description": "High-end furnished room in a modern apartment. "
+                       "Gym, coworking space included. Looking for a professional housemate.",
+        "ideal_tenant": "Working professional, high income, stable career.",
+        "price": 1300.0,
+        "location": "Rotterdam",
+        "listing_features": ["high_income", "professional_career"],
+        "applications": [
+            {
+                "name": "David R.",
+                "status": "ACCEPTED",
+                "person_features": ["high_income", "professional_career", "international_background", "social_lifestyle", "family_oriented"],
+            },
+            {
+                "name": "Mark L.",
+                "status": "ACCEPTED",
+                "person_features": ["high_income", "professional_career", "international_background", "social_lifestyle"],
+            },
+            {
+                "name": "Student Sven",
+                "status": "REJECTED",
+                "person_features": ["student_lifestyle", "quiet_person"],
+            },
+        ],
+    },
+    {
+        "external_id": "seed-rotterdam-2",
+        "url": "https://example.org/seed/rotterdam-2",
+        "title": "Spacious room, Delfshaven area Rotterdam",
+        "description": "Executive-grade apartment with all amenities. "
+                       "Shared with a finance professional. Seeking similar profile.",
+        "ideal_tenant": "Professional, employed, international background preferred.",
+        "price": 1400.0,
+        "location": "Rotterdam",
+        "listing_features": ["high_income", "professional_career"],
+        "applications": [
+            {
+                "name": "Sophie N.",
+                "status": "ACCEPTED",
+                "person_features": ["high_income", "professional_career", "social_lifestyle", "family_oriented"],
+            },
+            {
+                "name": "James K.",
+                "status": "ACCEPTED",
+                "person_features": ["high_income", "professional_career", "international_background"],
+            },
+            {
+                "name": "Backpacker Ben",
+                "status": "REJECTED",
+                "person_features": ["international_background", "likes_party"],
+            },
+        ],
+    },
+    {
+        "external_id": "seed-rotterdam-3",
+        "url": "https://example.org/seed/rotterdam-3",
+        "title": "Modern apartment, Westzeedijk, Rotterdam",
+        "description": "Premium 2BR apartment, floor heating, free gym. "
+                       "Looking for professional, well-organised housemate.",
+        "ideal_tenant": "Corporate professional, high earner, socially active.",
+        "price": 1350.0,
+        "location": "Rotterdam",
+        "listing_features": ["high_income", "professional_career"],
+        "applications": [
+            {
+                "name": "Chen W.",
+                "status": "ACCEPTED",
+                "person_features": ["high_income", "professional_career", "international_background"],
+            },
+            {
+                "name": "Sara M.",
+                "status": "ACCEPTED",
+                "person_features": ["high_income", "professional_career", "family_oriented"],
+            },
+            {
+                "name": "Rocky",
+                "status": "REJECTED",
+                "person_features": ["plays_guitar", "likes_party"],
+            },
+        ],
+    },
+]
+
+# ── Test user features ────────────────────────────────────────────────────────
+# Seeded directly — no LLM needed for the initial test.
+# The bio will trigger LLM-based extraction on the first POST /api/users call,
+# but these manual entries ensure tests work immediately from a fresh DB.
+TEST_USER_FEATURES = {
+    "quiet_person":       0.90,
+    "studious":           0.85,
+    "likes_reading":      0.80,
+    "cooking_enthusiast": 0.75,
+    "student_lifestyle":  0.70,
+}
+
 
 def seed() -> None:
-
-    # Listing features (realistic attributes renters put in listings)
-    listing_features = {
-        "furnished": "Comes with furniture included",
-        "balcony": "Has a balcony",
-        "near_station": "Close to public transport station",
-        "parking": "Private or street parking available",
-        "garden": "Garden or outdoor space",
-        "renovated": "Recently renovated property",
-        "utilities_included": "Utilities included in rent",
-        "no_pets": "No pets allowed",
-        "pets_ok": "Pets allowed",
-        "student_ok": "Suitable for students",
-        "affordable": "Lower rental prices, budget-friendly",
-    }
-
-    # Applicant/motivation-letter style features
-    applicant_features = {
-        "likes_party": "Enjoys social life / going out",
-        "likes_reading": "Enjoys reading and quiet cultural activities",
-        "plays_guitar": "Plays guitar or another musical instrument",
-        "likes_nature": "Enjoys nature, hiking, parks and green spaces",
-        "student_lifestyle": "Student lifestyle (studies, student clubs)",
-        "family_oriented": "Family-oriented, stable household",
-        "high_income": "Higher income / professional career",
-        "international_background": "Lived or worked abroad; international outlook",
-        "studious": "Very focused on studies and quiet routines",
-        "cooking_enthusiast": "Enjoys cooking and home meals",
-        "quiet_person": "Prefers quiet, respectful living environment",
-    }
-
-    listings_data = [
-        # Achterwijken van Amsterdam (two examples) — studenty listings
-        {
-            "external_id": "achter-1",
-            "url": "https://example.org/listings/achter-1",
-            "title": "Cozy studio in Achterwijken",
-            "description": "Small studio, popular with students and social life.",
-            "price": 85000,  # €850.00
-            "location": "Achterwijken, Amsterdam",
-            "listing_type": "studio",
-            "features": ["student_ok", "furnished", "near_station"],
-            "applications": [
-                {
-                    "name": "Anna Student",
-                    "status": "ACCEPTED",
-                    "person_features": ["student_lifestyle", "likes_reading"],
-                    "messages": [
-                        {
-                            "text": "Hi, I'm Anna, an MSc student at UvA. I'm tidy and friendly, would love the studio.",
-                            "features": ["student_lifestyle", "likes_reading"],
-                        },
-                        {
-                            "text": "Thanks Anna, we can proceed with a viewing.",
-                            "features": [],
-                        },
-                    ],
-                },
-                {
-                    "name": "Tom Party",
-                    "status": "REJECTED",
-                    "person_features": ["likes_party", "plays_guitar"],
-                    "messages": [
-                        {
-                            "text": "Hey, I'm often hosting friends and jamming sessions.",
-                            "features": ["likes_party", "plays_guitar"],
-                        },
-                    ],
-                },
-                {
-                    "name": "Sara Loud",
-                    "status": "REJECTED",
-                    "person_features": ["likes_party"],
-                    "messages": [
-                        {
-                            "text": "I'm very social and love nights out.",
-                            "features": ["likes_party"],
-                        },
-                    ],
-                },
-            ],
-        },
-        {
-            "external_id": "achter-2",
-            "url": "https://example.org/listings/achter-2",
-            "title": "One-bedroom apartment near shops",
-            "description": "Compact 1BR; quiet evenings preferred but close to campus.",
-            "price": 115000,  # €1,150.00
-            "location": "Achterwijken, Amsterdam",
-            "listing_type": "apartment",
-            "features": ["furnished", "near_station", "no_pets"],
-            "applications": [
-                {
-                    "name": "Lucas Quiet",
-                    "status": "ACCEPTED",
-                    "person_features": ["studious", "cooking_enthusiast"],
-                    "messages": [
-                        {
-                            "text": "Hi, I'm Lucas, I study and cook a lot — happy to keep the place tidy.",
-                            "features": ["studious", "cooking_enthusiast"],
-                        },
-                    ],
-                },
-                {
-                    "name": "Party Pete",
-                    "status": "REJECTED",
-                    "person_features": ["likes_party"],
-                    "messages": [
-                        {
-                            "text": "I love inviting people over and playing music.",
-                            "features": ["likes_party"],
-                        },
-                    ],
-                },
-                {
-                    "name": "Guitar Greg",
-                    "status": "REJECTED",
-                    "person_features": ["plays_guitar"],
-                    "messages": [
-                        {
-                            "text": "I'm a guitarist and practice daily.",
-                            "features": ["plays_guitar"],
-                        },
-                    ],
-                },
-            ],
-        },
-        # Wassenaar (two examples) - affluent suburb (family/professional traits)
-        {
-            "external_id": "wassenaar-1",
-            "url": "https://example.org/listings/wassenaar-1",
-            "title": "Family home with large garden",
-            "description": "Spacious house, ideal for families and professionals.",
-            "price": 350000,  # €3,500.00
-            "location": "Wassenaar",
-            "listing_type": "house",
-            "features": ["garden", "parking", "renovated"],
-            "applications": [
-                {
-                    "name": "Familie de Vries",
-                    "status": "ACCEPTED",
-                    "person_features": ["family_oriented", "high_income"],
-                    "messages": [
-                        {
-                            "text": "We are a quiet family looking for long-term rental; stable income.",
-                            "features": ["family_oriented", "high_income"],
-                        },
-                    ],
-                },
-                {
-                    "name": "Student Sven",
-                    "status": "REJECTED",
-                    "person_features": ["student_lifestyle"],
-                    "messages": [
-                        {
-                            "text": "I'm a student and would love the garden for parties.",
-                            "features": ["student_lifestyle", "likes_party"],
-                        },
-                    ],
-                },
-                {
-                    "name": "Rocky",
-                    "status": "REJECTED",
-                    "person_features": ["plays_guitar"],
-                    "messages": [
-                        {
-                            "text": "I play in a band and rehearse at home.",
-                            "features": ["plays_guitar"],
-                        },
-                    ],
-                },
-            ],
-        },
-        {
-            "external_id": "wassenaar-2",
-            "url": "https://example.org/listings/wassenaar-2",
-            "title": "Modern villa near the dunes",
-            "description": "High-end villa, quiet and close to nature.",
-            "price": 480000,  # €4,800.00
-            "location": "Wassenaar",
-            "listing_type": "villa",
-            "features": ["garden", "renovated", "pets_ok"],
-            "applications": [
-                {
-                    "name": "Prof. Jansen",
-                    "status": "ACCEPTED",
-                    "person_features": [
-                        "high_income",
-                        "international_background",
-                        "quiet_person",
-                    ],
-                    "messages": [
-                        {
-                            "text": "Academic working internationally; seeking quiet residence near the dunes.",
-                            "features": [
-                                "high_income",
-                                "international_background",
-                                "quiet_person",
-                            ],
-                        },
-                    ],
-                },
-                {
-                    "name": "Backpacker Ben",
-                    "status": "REJECTED",
-                    "person_features": ["international_background", "likes_party"],
-                    "messages": [
-                        {
-                            "text": "I travel a lot and host friends from abroad.",
-                            "features": ["international_background", "likes_party"],
-                        },
-                    ],
-                },
-                {
-                    "name": "Strummer Stella",
-                    "status": "REJECTED",
-                    "person_features": ["plays_guitar"],
-                    "messages": [
-                        {
-                            "text": "I play guitar professionally and often practice.",
-                            "features": ["plays_guitar"],
-                        },
-                    ],
-                },
-            ],
-        },
-        # Leeuwarden (two examples) - smaller city (calm, student-friendly)
-        {
-            "external_id": "leeuwarden-1",
-            "url": "https://example.org/listings/leeuwarden-1",
-            "title": "Affordable apartment near the canals",
-            "description": "Budget-friendly 2BR in a calm historic centre.",
-            "price": 65000,  # €650.00
-            "location": "Leeuwarden",
-            "listing_type": "apartment",
-            "features": ["affordable", "near_station", "no_pets"],
-            "applications": [
-                {
-                    "name": "Mieke",
-                    "status": "ACCEPTED",
-                    "person_features": ["studious", "likes_reading"],
-                    "messages": [
-                        {
-                            "text": "I'm a calm student who loves reading and early nights.",
-                            "features": ["studious", "likes_reading"],
-                        },
-                    ],
-                },
-                {
-                    "name": "Club Kevin",
-                    "status": "REJECTED",
-                    "person_features": ["likes_party"],
-                    "messages": [
-                        {
-                            "text": "I enjoy nightlife and parties every weekend.",
-                            "features": ["likes_party"],
-                        },
-                    ],
-                },
-                {
-                    "name": "Gita",
-                    "status": "REJECTED",
-                    "person_features": ["plays_guitar"],
-                    "messages": [
-                        {
-                            "text": "I do regular jam sessions at home.",
-                            "features": ["plays_guitar"],
-                        },
-                    ],
-                },
-            ],
-        },
-        {
-            "external_id": "leeuwarden-2",
-            "url": "https://example.org/listings/leeuwarden-2",
-            "title": "Quiet house close to local amenities",
-            "description": "Small family or professional home, peaceful neighbourhood.",
-            "price": 90000,  # €900.00
-            "location": "Leeuwarden",
-            "listing_type": "house",
-            "features": ["garden", "parking", "renovated"],
-            "applications": [
-                {
-                    "name": "Henk",
-                    "status": "ACCEPTED",
-                    "person_features": ["family_oriented", "cooking_enthusiast"],
-                    "messages": [
-                        {
-                            "text": "Small family, we love cooking and quiet evenings.",
-                            "features": ["family_oriented", "cooking_enthusiast"],
-                        },
-                    ],
-                },
-                {
-                    "name": "Noisy Nick",
-                    "status": "REJECTED",
-                    "person_features": ["likes_party"],
-                    "messages": [
-                        {
-                            "text": "I host friends frequently and have loud gatherings.",
-                            "features": ["likes_party"],
-                        },
-                    ],
-                },
-                {
-                    "name": "Strum Sam",
-                    "status": "REJECTED",
-                    "person_features": ["plays_guitar"],
-                    "messages": [
-                        {
-                            "text": "I practice guitar daily and record at home.",
-                            "features": ["plays_guitar"],
-                        },
-                    ],
-                },
-            ],
-        },
-    ]
-
     with Session(engine) as session:
-        # ── Test user (fixed UUID for easy frontend testing) ─────────────────
+        # ── Test user ────────────────────────────────────────────────────────
         test_user = User(
-            user_id=SEED_USER_ID,
-            name="Test User",
-            gender="M",
-            occupation="Software Engineer",
-            income=3500,
-            age=28,
+            user_id=TEST_USER_ID,
+            name="Lisa de Vries",
+            gender="F",
+            occupation="MSc student / research assistant",
+            income=1000,
+            age=23,
             has_pets=False,
             bio=(
-                "I'm a quiet, tidy software engineer working full-time. "
-                "I enjoy cooking and reading at home. No pets, non-smoker. "
-                "Looking for a stable long-term rental."
+                "MSc student at TU Delft, 23 years old. I'm quiet and studious — "
+                "most evenings I'm cooking or reading at home. Non-smoker, no pets. "
+                "I work part-time as a research assistant (€1,000/month net). "
+                "Dutch national, looking for a peaceful long-term room near campus."
             ),
         )
         session.add(test_user)
         session.commit()
 
-        # create features first (listing + applicant traits)
+        # ── Features ────────────────────────────────────────────────────────
         feature_objs: dict[str, Feature] = {}
-        for name, desc in {**listing_features, **applicant_features}.items():
+        for name, desc in FEATURES.items():
             f = Feature(name=name, description=desc)
             session.add(f)
-            session.commit()
-            session.refresh(f)
+            session.flush()
             feature_objs[name] = f
+        session.commit()
 
-        # create listings and link listing features
-        for ld in listings_data:
-            l = Listing(
+        # ── Test user features (manual seed, bypasses LLM) ──────────────────
+        for name, score in TEST_USER_FEATURES.items():
+            feat = feature_objs.get(name)
+            if feat:
+                session.add(UserFeature(
+                    user_id=TEST_USER_ID,
+                    feature_id=feat.feature_id,
+                    score=score,
+                ))
+        session.commit()
+
+        # ── Listings, applications, messages ────────────────────────────────
+        for ld in LISTINGS:
+            listing = Listing(
                 external_id=ld["external_id"],
                 url=ld["url"],
                 title=ld["title"],
                 description=ld["description"],
-                price=ld["price"],
-                location=ld["location"],
-                listing_type=ld["listing_type"],
+                ideal_tenant=ld.get("ideal_tenant"),
+                price=ld.get("price"),
+                location=ld.get("location"),
             )
-            session.add(l)
-            session.commit()
-            session.refresh(l)
+            session.add(listing)
+            session.flush()
 
-            for fname in ld["features"]:
+            for fname in ld.get("listing_features", []):
                 feat = feature_objs.get(fname)
                 if feat:
-                    session.add(
-                        ListingFeature(
-                            listing_id=l.listing_id, feature_id=feat.feature_id
-                        )
-                    )
+                    session.add(ListingFeature(
+                        listing_id=listing.listing_id,
+                        feature_id=feat.feature_id,
+                        score=1.0,
+                    ))
 
-            session.commit()
+            for appl in ld.get("applications", []):
+                person = Person(name=appl["name"])
+                session.add(person)
+                session.flush()
 
-            appls = ld.get("applications", [])
-            for a in appls:
-                p = Person(name=a["name"], text=(a.get("text") or ""))
-                session.add(p)
-                session.commit()
-                session.refresh(p)
+                for pf_name in appl.get("person_features", []):
+                    feat = feature_objs.get(pf_name)
+                    if feat:
+                        session.add(PersonFeature(
+                            person_id=person.person_id,
+                            feature_id=feat.feature_id,
+                            score=1.0,
+                        ))
 
-                # link person features
-                for pf in a.get("person_features", []):
-                    fobj = feature_objs.get(pf)
-                    if fobj:
-                        session.add(
-                            PersonFeature(
-                                person_id=p.person_id,
-                                feature_id=fobj.feature_id,
-                                score=1.0,
-                            )
-                        )
-
-                # create messages (chat history)
-                for msg in a.get("messages", []):
-                    m = Message(
-                        person_id=p.person_id,
-                        listing_id=l.listing_id,
-                        message=msg["text"],
-                    )
-                    session.add(m)
-                    session.commit()
-                    session.refresh(m)
-                    for mf in msg.get("features", []):
-                        mfobj = feature_objs.get(mf)
-                        if mfobj:
-                            session.add(
-                                MessageFeature(
-                                    message_id=m.message_id,
-                                    feature_id=mfobj.feature_id,
-                                    score=1.0,
-                                )
-                            )
-
-                # create application
-                application = Application(
-                    user_id=p.person_id,
-                    listing_id=l.listing_id,
-                    status=a["status"],
-                    message=(a.get("messages") or [])[0].get("text"),
-                )
-                session.add(application)
-            session.commit()
-
-        # create demo user with known fixed ID and sample applications
-        demo_user = User(
-            user_id=SEED_USER_ID,
-            name="Demo User",
-            occupation="Software Engineer",
-            income=4500,
-            age=27,
-            gender="male",
-            has_pets=False,
-            bio="Quiet, tidy professional. Work from home occasionally.",
-        )
-        session.add(demo_user)
-        session.commit()
-
-        # grab listing IDs to attach demo applications to
-        seeded_listings = session.exec(
-            __import__("sqlmodel").select(Listing)
-        ).all()
-        demo_apps = [
-            ("achter-1", "INVITED"),
-            ("achter-2", "PENDING"),
-            ("wassenaar-1", "REJECTED"),
-            ("leeuwarden-1", "ACCEPTED"),
-            ("leeuwarden-2", "GHOSTED"),
-        ]
-        listing_map = {l.external_id: l for l in seeded_listings}
-        for ext_id, status in demo_apps:
-            lst = listing_map.get(ext_id)
-            if lst:
                 session.add(Application(
-                    user_id=SEED_USER_ID,
-                    listing_id=lst.listing_id,
-                    status=status,
-                    message="Hi, I'm interested in this listing.",
+                    user_id=person.person_id,
+                    listing_id=listing.listing_id,
+                    status=appl["status"],
                 ))
-        session.commit()
 
-    print("Seed complete: inserted features, listings, and demo user.")
+            session.commit()
+
+    print("Seed complete.")
