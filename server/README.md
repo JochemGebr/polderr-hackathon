@@ -34,33 +34,17 @@ Database (SQLite) is created automatically on first start. Interactive docs at *
   "url": "https://kamernet.nl/huren/kamer-delft/...",
   "title": "Kamer Hendrik Tollensstraat",
   "description": "Full listing description text...",
-
-  "price": 90000,
-  "utilities_included": true,
-
+  "price": 900,
   "location": "Delft",
-  "listing_type": "room",
-  "size_m2": 14,
-  "furnished": true,
-  "available_from": "2026-08-01",
-  "min_duration_months": 3,
-
-  "age_min": 16,
-  "age_max": 35,
-  "gender_preference": "female",
-  "accepted_occupations": ["student", "working_student", "employed"],
-  "max_tenants": 1,
-  "language": "English",
-  "pets_allowed": false,
-
+  "details": "14m², furnished, available from August 2026, min 3 months",
+  "ideal_tenant": "Female student or working professional, no pets, speaks English",
   "accepted_person_id": null
 }
 ```
-> All fields except `external_id`, `url`, `title`, and `description` are optional — send what the scraper can find.
-> `price` is in **euro cents** (€900 = `90000`).
+> All fields except `external_id`, `url`, `title`, and `description` are optional.
+> `price` is the monthly rent in euros.
+> `details` and `ideal_tenant` are free-text strings passed directly to the LLM.
 > `external_id` = the numeric listing ID from the Kamernet URL (`kamer-2373935` → `"2373935"`).
-> `gender_preference`: `"any"` | `"male"` | `"female"`.
-> `accepted_occupations`: any subset of `["student", "working_student", "employed", "job_seeker"]`.
 
 ---
 

@@ -151,6 +151,7 @@ def generate_motivation(
     user: User,
     listing_features: list[dict[str, Any]],
     session: Session,
+    insights: dict[str, Any] | None = None,
 ) -> str:
     from app.services.aggregation_service import (
         find_similar_applications,
@@ -197,6 +198,36 @@ def generate_motivation(
             parts.append(part)
         examples_str = "\n\n---\n\n".join(parts)
 
+    # Build applicant-fit section from cross-referenced insights
+    fit_str = ""
+    if insights:
+        user_names = {f["name"] for f in insights.get("user_features", [])}
+        accepted_names = {f["name"] for f in insights.get("accepted_features", [])}
+        rejected_names = {f["name"] for f in insights.get("rejected_features", [])}
+
+        strengths = sorted(user_names & accepted_names)
+        risks = sorted(user_names & rejected_names)
+        missing = sorted(accepted_names - user_names)[:3]
+
+        fit_lines = []
+        if strengths:
+            fit_lines.append(
+                f"Strengths to highlight (applicant has traits that got others accepted): "
+                + ", ".join(strengths)
+            )
+        if risks:
+            fit_lines.append(
+                f"Risks to address or omit (applicant has traits that got others rejected): "
+                + ", ".join(risks)
+            )
+        if missing:
+            fit_lines.append(
+                f"Gaps vs accepted applicants (traits accepted tenants had that this applicant lacks): "
+                + ", ".join(missing)
+            )
+        if fit_lines:
+            fit_str = "\n".join(fit_lines)
+
     prompt = (
         "You are writing a rental application motivation letter"
         " on behalf of a tenant.\n"
@@ -216,6 +247,7 @@ def generate_motivation(
         f"Description: {listing.description}\n\n"
         f"## What the landlord cares about\n{features_str}\n\n"
         f"## Applicant profile\n{profile_str}\n\n"
+        + (f"## Applicant fit (from crowdsourced outcomes)\n{fit_str}\n\n" if fit_str else "")
         + (
             f"## Similar past applications\n{examples_str}\n\n"
             if examples_str

@@ -40,21 +40,10 @@ class Listing(SQLModel, table=True):
     url: str
     title: str
     description: str
-    price: Optional[int] = None              # monthly rent in cents
-    utilities_included: Optional[bool] = None
+    price: Optional[float] = None
     location: Optional[str] = None
-    listing_type: Optional[str] = None       # room | apartment | studio | house
-    size_m2: Optional[int] = None
-    furnished: Optional[bool] = None
-    available_from: Optional[str] = None     # ISO date string "YYYY-MM-DD"
-    min_duration_months: Optional[int] = None
-    age_min: Optional[int] = None
-    age_max: Optional[int] = None
-    gender_preference: Optional[str] = None  # "any" | "male" | "female"
-    accepted_occupations: Optional[str] = None  # JSON array e.g. '["student","employed"]'
-    max_tenants: Optional[int] = None
-    language: Optional[str] = None
-    pets_allowed: Optional[bool] = None
+    details: Optional[str] = None
+    ideal_tenant: Optional[str] = None
     accepted_person_id: Optional[str] = Field(default=None, foreign_key="person.person_id", index=True)
 
     applications: List["Application"] = Relationship(back_populates="listing")
