@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",
-    "package": "plasmo package"
+    "package": "plasmo package",
+    "test:landlord-features": "pnpm dlx dotenv-cli -e .env.local -- pnpm dlx tsx lib/test-landlord-features.ts"
   },
   "dependencies": {
     "plasmo": "0.90.5",

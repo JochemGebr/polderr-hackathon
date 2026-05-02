@@ -23,14 +23,25 @@ function IndexPopup() {
   const [editableMessage, setEditableMessage] = useState<string>("")
   const [copied, setCopied] = useState(false)
   const [pageText, setPageText] = useState<string>("")
+  const fullPageUrl = chrome.runtime.getURL("options.html")
 
   // Determine if we're on Kamernet when popup opens
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const activeTab = tabs[0]
-      if (activeTab?.url && activeTab.url.includes("kamernet.nl")) {
-        setIsKamernet(true)
-      } else {
+      const url = activeTab?.url
+
+      if (!url) {
+        setIsKamernet(false)
+        return
+      }
+
+      try {
+        const parsedUrl = new URL(url)
+        const isKamernetHost = parsedUrl.hostname.endsWith("kamernet.nl")
+        const isListingPath = /^\/huren\/[^/]+\/[^/]+\/kamer-\d+/.test(parsedUrl.pathname)
+        setIsKamernet(isKamernetHost && isListingPath)
+      } catch {
         setIsKamernet(false)
       }
     })
@@ -117,9 +128,32 @@ function IndexPopup() {
   if (!isKamernet) {
     return (
       <div className="popup-container">
-        <h2 className="popup-heading">Open a Kamernet listing</h2>
+        <div className="popup-heading-row">
+          <h2 className="popup-heading">No listing found</h2>
+          <button
+            className="popup-icon-button"
+            onClick={() => chrome.tabs.create({ url: fullPageUrl })}
+            aria-label="Open full dashboard"
+            title="Open full dashboard"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20 21a8 8 0 1 0-16 0" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </button>
+        </div>
         <p className="popup-paragraph">
-          CrowdApply works when you are viewing a rental listing on Kamernet.
+          Please go to a Kamernet listing to use CrowdApply.
         </p>
         <button className="popup-button popup-button-disabled" disabled>
           Analyse listing
@@ -131,8 +165,31 @@ function IndexPopup() {
   return (
     <div className="popup-container">
       <div className="popup-header">
-        <h2 className="popup-title">CrowdApply</h2>
-        <p className="popup-subtitle">Know what to say, know what happened.</p>
+        <div>
+          <h2 className="popup-title">CrowdApply</h2>
+          <p className="popup-subtitle">Know what to say, know what happened.</p>
+        </div>
+        <button
+          className="popup-icon-button"
+          onClick={() => chrome.tabs.create({ url: fullPageUrl })}
+          aria-label="Open full dashboard"
+          title="Open full dashboard"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 21a8 8 0 1 0-16 0" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        </button>
       </div>
 
       {error && (

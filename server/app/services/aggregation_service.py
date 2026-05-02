@@ -20,7 +20,7 @@ def find_similar_applications(
     the given listing. Used as few-shot examples for the LLM recommendation.
     v1 uses SQL attribute filters — swap in vector similarity later if needed.
     """
-    listing_query = select(Listing.id)
+    listing_query = select(Listing.listing_id)
     if listing.listing_type:
         listing_query = listing_query.where(Listing.listing_type == listing.listing_type)
     if listing.location:
