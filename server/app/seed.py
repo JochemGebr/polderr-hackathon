@@ -337,7 +337,7 @@ def seed() -> None:
         # create features first (listing + applicant traits)
         feature_objs: dict[str, Feature] = {}
         for name, desc in {**listing_features, **applicant_features}.items():
-            f = Feature(name=name, description=description)
+            f = Feature(name=name, description=desc)
             session.add(f)
             session.commit()
             session.refresh(f)
@@ -382,7 +382,9 @@ def seed() -> None:
                     if fobj:
                         session.add(
                             PersonFeature(
-                                person_id=p.person_id, feature_id=fobj.feature_id
+                                person_id=p.person_id,
+                                feature_id=fobj.feature_id,
+                                score=1.0,
                             )
                         )
 
@@ -401,7 +403,9 @@ def seed() -> None:
                         if mfobj:
                             session.add(
                                 MessageFeature(
-                                    message_id=m.message_id, feature_id=mfobj.feature_id
+                                    message_id=m.message_id,
+                                    feature_id=mfobj.feature_id,
+                                    score=1.0,
                                 )
                             )
 

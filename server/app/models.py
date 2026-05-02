@@ -19,11 +19,13 @@ class ListingFeature(SQLModel, table=True):
 class PersonFeature(SQLModel, table=True):
     person_id: str = Field(foreign_key="person.person_id", primary_key=True)
     feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
+    score: float = Field(default=1.0)  # 0–1 relevance score from LLM extraction
 
 
 class MessageFeature(SQLModel, table=True):
     message_id: str = Field(foreign_key="message.message_id", primary_key=True)
     feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
+    score: float = Field(default=1.0)  # 0–1 relevance score from LLM extraction
 
 
 class Listing(SQLModel, table=True):

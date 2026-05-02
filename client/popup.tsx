@@ -16,7 +16,7 @@ interface GenerateMessageResponse {
 function IndexPopup() {
   const [isKamernet, setIsKamernet] = useState<boolean | null>(null)
   const [loadingState, setLoadingState] = useState<"idle" | "analysing" | "generating">("idle")
-  const [error, setError] = useState<string | null>(null)
+  
   
   const [features, setFeatures] = useState<ExtractFeaturesResponse | null>(null)
   const [generatedMessage, setGeneratedMessage] = useState<string | null>(null)
@@ -49,40 +49,22 @@ function IndexPopup() {
 
   const handleAnalyse = async () => {
     setLoadingState("analysing")
-    setError(null)
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-      
-      if (!tab.id) throw new Error("No active tab")
 
-      // Request text from content script
-      // -> Note for integration: Your content script must listen for "GET_PAGE_TEXT" 
-      //    and respond with the extracted textual info of the listing.
-      const response: { text?: string; error?: string } = await chrome.tabs.sendMessage(tab.id, { 
-        action: "GET_PAGE_TEXT" 
-      }).catch(err => {
-        throw new Error("Could not read page content. Make sure the content script is running.")
-      })
+      const response: any = await chrome.tabs.sendMessage(tab!.id!, { action: "GET_PAGE_TEXT" })
 
-      if (response.error || !response.text) {
-        throw new Error(response.error || "Could not extract listing information.")
-      }
-
-      setPageText(response.text)
+      setPageText(response?.text || "")
 
       const apiRes = await fetch(`${API_BASE_URL}/extract-listing-features`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listingText: response.text })
+        body: JSON.stringify({ listingText: response?.text || "" })
       })
-
-      if (!apiRes.ok) throw new Error("Backend unavailable or returned an error.")
 
       const data: ExtractFeaturesResponse = await apiRes.json()
       setFeatures(data)
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.")
     } finally {
       setLoadingState("idle")
     }
@@ -91,7 +73,6 @@ function IndexPopup() {
   const handleGenerate = async () => {
     if (!features || !pageText) return
     setLoadingState("generating")
-    setError(null)
 
     try {
       const apiRes = await fetch(`${API_BASE_URL}/generate-application-message`, {
@@ -103,13 +84,9 @@ function IndexPopup() {
         })
       })
 
-      if (!apiRes.ok) throw new Error("Backend unavailable or returned an error.")
-
       const data: GenerateMessageResponse = await apiRes.json()
       setGeneratedMessage(data.message)
       setEditableMessage(data.message)
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.")
     } finally {
       setLoadingState("idle")
     }
@@ -192,11 +169,7 @@ function IndexPopup() {
         </button>
       </div>
 
-      {error && (
-        <div className="popup-error">
-          <p className="popup-error-text">{error}</p>
-        </div>
-      )}
+      
 
       {!features && (
         <button 
