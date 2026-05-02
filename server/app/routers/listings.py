@@ -1,5 +1,3 @@
-import json
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
@@ -12,11 +10,7 @@ router = APIRouter(prefix="/listings", tags=["listings"])
 
 
 def _serialize(body: ListingCreate) -> dict:
-    data = body.model_dump(exclude={"accepted_occupations"})
-    data["accepted_occupations"] = (
-        json.dumps(body.accepted_occupations) if body.accepted_occupations is not None else None
-    )
-    return data
+    return body.model_dump()
 
 
 def _get_features(session: Session, listing_id: str) -> list[ExtractedFeature]:
