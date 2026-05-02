@@ -13,16 +13,25 @@ def new_id() -> str:
 class ListingFeature(SQLModel, table=True):
     listing_id: str = Field(foreign_key="listing.listing_id", primary_key=True)
     feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
+    score: float = Field(default=1.0)  # 0–1 relevance score from LLM extraction
 
 
 class PersonFeature(SQLModel, table=True):
     person_id: str = Field(foreign_key="person.person_id", primary_key=True)
     feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
+    score: float = Field(default=1.0)  # 0–1 relevance score from LLM extraction
 
 
 class MessageFeature(SQLModel, table=True):
     message_id: str = Field(foreign_key="message.message_id", primary_key=True)
     feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
+    score: float = Field(default=1.0)  # 0–1 relevance score from LLM extraction
+
+
+class UserFeature(SQLModel, table=True):
+    user_id: str = Field(foreign_key="user.user_id", primary_key=True)
+    feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
+    score: float = Field(default=0.0)  # -1..1 landlord signal score
 
 
 class Listing(SQLModel, table=True):
@@ -47,16 +56,17 @@ class Listing(SQLModel, table=True):
 class User(SQLModel, table=True):
     user_id: str = Field(default_factory=new_id, primary_key=True)
     name: Optional[str] = None
+    gender: Optional[str] = None
     occupation: Optional[str] = None
     income: Optional[int] = None  # monthly net in euros
     age: Optional[int] = None
     has_pets: bool = False
     bio: Optional[str] = None  # free-text self description the LLM can use
-    profile: Optional[str] = None  # JSON blob for extra structured data
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
+    
     applications: List["Application"] = Relationship(back_populates="user")
+    features: List["Feature"] = Relationship(
+        back_populates="users", link_model=UserFeature
+    )
 
 
 # status values: PENDING | INVITED | REJECTED | GHOSTED | ACCEPTED
@@ -89,6 +99,9 @@ class Feature(SQLModel, table=True):
     )
     persons: List["Person"] = Relationship(
         back_populates="features", link_model=PersonFeature
+    )
+    users: List["User"] = Relationship(
+        back_populates="features", link_model=UserFeature
     )
 
 

@@ -178,3 +178,5 @@ Messages are historical application texts tied to a person and a listing (crowds
   "addressed_concerns": ["Quiet lifestyle mentioned"]
 }
 ```
+
+

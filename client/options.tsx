@@ -1,11 +1,76 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+
+const API_BASE = "http://localhost:3001/api"
 
 function OptionsPage() {
 	const [isProfileOpen, setIsProfileOpen] = useState(false)
-	const [profileName, setProfileName] = useState("Alex Candidate")
-	const [profileSummary, setProfileSummary] = useState(
-		"Product-minded software engineer with 6+ years building web apps. Looking for remote-friendly teams where I can contribute across frontend and product analytics."
-	)
+	const [profileName, setProfileName] = useState("")
+	const [profileGender, setProfileGender] = useState("")
+	const [profileOccupation, setProfileOccupation] = useState("")
+	const [profileIncome, setProfileIncome] = useState("")
+	const [profileAge, setProfileAge] = useState("")
+	const [profileHasPets, setProfileHasPets] = useState(false)
+	const [profileSummary, setProfileSummary] = useState("")
+	const [userId, setUserId] = useState<string | null>(null)
+	const [saveStatus, setSaveStatus] = useState<
+		"idle" | "saving" | "saved" | "error"
+	>("idle")
+
+	useEffect(() => {
+		chrome.storage.local.get("userId", async (result) => {
+			const id = result.userId as string | undefined
+			if (!id) return
+			setUserId(id)
+			const res = await fetch(`${API_BASE}/users/${id}`)
+			if (!res.ok) return
+			const user = await res.json()
+			if (user.name) setProfileName(user.name)
+			if (user.gender) setProfileGender(user.gender)
+			if (user.occupation) setProfileOccupation(user.occupation)
+			if (user.income != null) setProfileIncome(String(user.income))
+			if (user.age != null) setProfileAge(String(user.age))
+			setProfileHasPets(user.has_pets ?? false)
+			if (user.bio) setProfileSummary(user.bio)
+		})
+	}, [])
+
+	async function saveProfile() {
+		setSaveStatus("saving")
+		try {
+			const body = {
+				name: profileName || null,
+				gender: profileGender || null,
+				occupation: profileOccupation || null,
+				income: profileIncome ? parseInt(profileIncome, 10) : null,
+				age: profileAge ? parseInt(profileAge, 10) : null,
+				has_pets: profileHasPets,
+				bio: profileSummary || null
+			}
+			if (userId) {
+				const res = await fetch(`${API_BASE}/users/${userId}`, {
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(body)
+				})
+				if (!res.ok) throw new Error("Update failed")
+			} else {
+				const res = await fetch(`${API_BASE}/users`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(body)
+				})
+				if (!res.ok) throw new Error("Create failed")
+				const created = await res.json()
+				const newId = created.user_id as string
+				setUserId(newId)
+				chrome.storage.local.set({ userId: newId })
+			}
+			setSaveStatus("saved")
+			setTimeout(() => setSaveStatus("idle"), 2000)
+		} catch {
+			setSaveStatus("error")
+		}
+	}
 
 	const weeklyApplications = [3, 4, 6, 5, 8, 7, 9]
 	const responseRate = [22, 26, 31, 28, 34, 38, 41]
@@ -215,7 +280,7 @@ function OptionsPage() {
 							</label>
 							<input
 								value={profileName}
-								onChange={(event) => setProfileName(event.target.value)}
+								onChange={(e) => setProfileName(e.target.value)}
 								style={{
 									width: "100%",
 									border: "1px solid #c8d2ea",
@@ -225,6 +290,92 @@ function OptionsPage() {
 									boxSizing: "border-box"
 								}}
 							/>
+
+							<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+								<div>
+									<label style={{ display: "block", marginBottom: 8, fontSize: 13 }}>
+										Gender
+									</label>
+									<input
+										value={profileGender}
+										onChange={(e) => setProfileGender(e.target.value)}
+										style={{
+											width: "100%",
+											border: "1px solid #c8d2ea",
+											borderRadius: 8,
+											padding: "8px 10px",
+											boxSizing: "border-box"
+										}}
+									/>
+								</div>
+								<div>
+									<label style={{ display: "block", marginBottom: 8, fontSize: 13 }}>
+										Age
+									</label>
+									<input
+										type="number"
+										value={profileAge}
+										onChange={(e) => setProfileAge(e.target.value)}
+										style={{
+											width: "100%",
+											border: "1px solid #c8d2ea",
+											borderRadius: 8,
+											padding: "8px 10px",
+											boxSizing: "border-box"
+										}}
+									/>
+								</div>
+							</div>
+
+							<label style={{ display: "block", marginBottom: 8, fontSize: 13 }}>
+								Occupation
+							</label>
+							<input
+								value={profileOccupation}
+								onChange={(e) => setProfileOccupation(e.target.value)}
+								style={{
+									width: "100%",
+									border: "1px solid #c8d2ea",
+									borderRadius: 8,
+									padding: "8px 10px",
+									marginBottom: 12,
+									boxSizing: "border-box"
+								}}
+							/>
+
+							<label style={{ display: "block", marginBottom: 8, fontSize: 13 }}>
+								Monthly income (€)
+							</label>
+							<input
+								type="number"
+								value={profileIncome}
+								onChange={(e) => setProfileIncome(e.target.value)}
+								style={{
+									width: "100%",
+									border: "1px solid #c8d2ea",
+									borderRadius: 8,
+									padding: "8px 10px",
+									marginBottom: 12,
+									boxSizing: "border-box"
+								}}
+							/>
+
+							<label
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: 8,
+									marginBottom: 12,
+									fontSize: 13,
+									cursor: "pointer"
+								}}>
+								<input
+									type="checkbox"
+									checked={profileHasPets}
+									onChange={(e) => setProfileHasPets(e.target.checked)}
+								/>
+								Has pets
+							</label>
 
 							<label style={{ display: "block", marginBottom: 8, fontSize: 13 }}>
 								About you
@@ -239,9 +390,47 @@ function OptionsPage() {
 									borderRadius: 8,
 									padding: "8px 10px",
 									resize: "vertical",
-									boxSizing: "border-box"
+									boxSizing: "border-box",
+									marginBottom: 16
 								}}
 							/>
+
+							<div
+								style={{
+									display: "flex",
+									justifyContent: "flex-end",
+									alignItems: "center",
+									gap: 10
+								}}>
+								{saveStatus === "saved" && (
+									<span style={{ fontSize: 13, color: "#20a67a" }}>
+										Saved
+									</span>
+								)}
+								{saveStatus === "error" && (
+									<span style={{ fontSize: 13, color: "#e05252" }}>
+										Failed to save
+									</span>
+								)}
+								<button
+									onClick={saveProfile}
+									disabled={saveStatus === "saving"}
+									style={{
+										border: "none",
+										borderRadius: 8,
+										background: "#5b84ff",
+										color: "white",
+										padding: "8px 16px",
+										cursor:
+											saveStatus === "saving"
+												? "not-allowed"
+												: "pointer",
+										fontWeight: 600,
+										opacity: saveStatus === "saving" ? 0.7 : 1
+									}}>
+									{saveStatus === "saving" ? "Saving…" : "Save"}
+								</button>
+							</div>
 						</aside>
 					</div>
 				) : null}

@@ -30,7 +30,7 @@ interface RecommendationResponse {
 function IndexPopup() {
   const [isKamernet, setIsKamernet] = useState<boolean | null>(null)
   const [loadingState, setLoadingState] = useState<"idle" | "analysing" | "generating">("idle")
-  const [error, setError] = useState<string | null>(null)
+  
   
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null)
@@ -109,7 +109,6 @@ function IndexPopup() {
 
   const handleAnalyse = async () => {
     setLoadingState("analysing")
-    setError(null)
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -162,7 +161,6 @@ function IndexPopup() {
   const handleGenerate = async () => {
     if (!analysis || !pageText) return
     setLoadingState("generating")
-    setError(null)
 
     try {
       const data = await apiFetch<RecommendationResponse>(
@@ -170,8 +168,6 @@ function IndexPopup() {
       )
       setRecommendation(data)
       setEditableMessage(data.message)
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.")
     } finally {
       setLoadingState("idle")
     }

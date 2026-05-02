@@ -19,6 +19,7 @@ class ListingCreate(BaseModel):
 
 class UserCreate(BaseModel):
     name: Optional[str] = None
+    gender: Optional[str] = None
     occupation: Optional[str] = None
     income: Optional[int] = None
     age: Optional[int] = None
@@ -29,6 +30,7 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
+    gender: Optional[str] = None
     occupation: Optional[str] = None
     income: Optional[int] = None
     age: Optional[int] = None
@@ -47,6 +49,22 @@ class ApplicationUpdate(BaseModel):
     status: Optional[ApplicationStatus] = None
     message: Optional[str] = None
     result_notes: Optional[str] = None
+
+
+class ExtractedFeature(BaseModel):
+    feature_id: str
+    name: str
+    description: Optional[str] = None
+    score: float
+
+
+class ListingResponse(BaseModel):
+    listing_id: str
+    features: list[ExtractedFeature]
+
+
+class MotivationResponse(BaseModel):
+    motivation: str
 
 
 class FeatureCreate(BaseModel):
