@@ -1,15 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.db import get_session
-from app.models import Listing, User
-from app.services import aggregation_service, llm_service
+from app.models import Listing, ListingFeature, Feature, User
+from app.schemas import MotivationResponse
+from app.services import llm_service
 
-router = APIRouter(prefix="/recommendations", tags=["recommendations"])
+router = APIRouter(prefix="/motivation", tags=["motivation"])
 
 
-@router.get("")
-def get_recommendation(
+@router.get("", response_model=MotivationResponse)
+def get_motivation(
     listing_id: str,
     user_id: str,
     session: Session = Depends(get_session),
@@ -22,7 +23,19 @@ def get_recommendation(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    similar = aggregation_service.find_similar_applications(session, listing)
-    principles = aggregation_service.get_principles()
+    # Fetch listing features with scores
+    tags = session.exec(
+        select(ListingFeature).where(ListingFeature.listing_id == listing_id)
+    ).all()
+    listing_features = []
+    for tag in tags:
+        feature = session.get(Feature, tag.feature_id)
+        if feature:
+            listing_features.append({
+                "name": feature.name,
+                "description": feature.description,
+                "score": tag.score,
+            })
 
-    return llm_service.generate_recommendation(listing, user, similar, principles)
+    motivation = llm_service.generate_motivation(listing, user, listing_features)
+    return MotivationResponse(motivation=motivation)

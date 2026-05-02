@@ -13,6 +13,7 @@ def new_id() -> str:
 class ListingFeature(SQLModel, table=True):
     listing_id: str = Field(foreign_key="listing.listing_id", primary_key=True)
     feature_id: str = Field(foreign_key="feature.feature_id", primary_key=True)
+    score: float = Field(default=1.0)  # 0–1 relevance score from LLM extraction
 
 
 class PersonFeature(SQLModel, table=True):
