@@ -15,7 +15,6 @@ from app.models import (
 
 SEED_USER_ID = "00000000-0000-0000-0000-000000000001"
 
-
 def seed() -> None:
 
     # Listing features (realistic attributes renters put in listings)
@@ -337,6 +336,24 @@ def seed() -> None:
     ]
 
     with Session(engine) as session:
+        # ── Test user (fixed UUID for easy frontend testing) ─────────────────
+        test_user = User(
+            user_id=SEED_USER_ID,
+            name="Test User",
+            gender="M",
+            occupation="Software Engineer",
+            income=3500,
+            age=28,
+            has_pets=False,
+            bio=(
+                "I'm a quiet, tidy software engineer working full-time. "
+                "I enjoy cooking and reading at home. No pets, non-smoker. "
+                "Looking for a stable long-term rental."
+            ),
+        )
+        session.add(test_user)
+        session.commit()
+
         # create features first (listing + applicant traits)
         feature_objs: dict[str, Feature] = {}
         for name, desc in {**listing_features, **applicant_features}.items():
