@@ -58,12 +58,3 @@ def update_application(
     session.refresh(application)
     return application
 
-
-@router.get("/user/{user_id}")
-def get_user_applications(user_id: str, session: Session = Depends(get_session)):
-    applications = session.exec(
-        select(Application)
-        .where(Application.user_id == user_id)
-        .order_by(Application.applied_at.desc())
-    ).all()
-    return applications
