@@ -8,7 +8,8 @@
     "dev": "plasmo dev",
     "build": "plasmo build",
     "package": "plasmo package",
-    "test:landlord-features": "pnpm dlx dotenv-cli -e .env.local -- pnpm dlx tsx lib/test-landlord-features.ts"
+    "test:landlord-features": "pnpm dlx dotenv-cli -e .env.local -- pnpm dlx tsx lib/test-landlord-features.ts",
+    "test:landlord-features-db": "pnpm dlx dotenv-cli -e .env.local -- pnpm dlx tsx lib/test-landlord-features-db.ts"
   },
   "dependencies": {
     "plasmo": "0.90.5",
