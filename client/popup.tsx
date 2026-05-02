@@ -240,12 +240,54 @@ function IndexPopup() {
     )
   }
 
+  const statsCard = analysis ? (
+    <div className="popup-impact-card">
+      <div className="popup-impact-header">
+        <p className="popup-impact-title">What correlates with acceptance</p>
+        <span className="popup-impact-score-card">
+          Match score: {Math.round(analysis.matchScore * 100)}%
+        </span>
+      </div>
+      <div className="popup-impact-list">
+        {analysis.features.map((feature) => {
+          const percent = Math.round(Math.abs(feature.score) * 100)
+          const isPositive = feature.score >= 0
+          return (
+            <div key={feature.name} className="popup-impact-row">
+              <span className="popup-impact-label">{feature.pretty_name}</span>
+              <div className="popup-impact-bar">
+                <div
+                  className={
+                    isPositive
+                      ? "popup-impact-fill popup-impact-fill--positive"
+                      : "popup-impact-fill popup-impact-fill--negative"
+                  }
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
+              <span
+                className={
+                  isPositive
+                    ? "popup-impact-value popup-impact-value--positive"
+                    : "popup-impact-value popup-impact-value--negative"
+                }
+              >
+                {isPositive ? "+" : "-"}
+                {percent}%
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  ) : null
+
   return (
     <div className="popup-container">
       <div className="popup-header">
         <div>
           <h2 className="popup-title">CrowdApply</h2>
-          <p className="popup-subtitle">know what to say, know what happened.</p>
+          <p className="popup-subtitle">decode the housing market.</p>
         </div>
         <button
           className="popup-icon-button"
@@ -283,45 +325,7 @@ function IndexPopup() {
 
       {analysis && !recommendation && (
         <div className="popup-card">
-          <div className="popup-impact-card">
-            <div className="popup-impact-header">
-              <p className="popup-impact-title">What correlates with acceptance</p>
-              <p className="popup-impact-score">
-                Match score: {Math.round(analysis.matchScore * 100)}%
-              </p>
-            </div>
-            <div className="popup-impact-list">
-              {analysis.features.map((feature) => {
-                const percent = Math.round(Math.abs(feature.score) * 100)
-                const isPositive = feature.score >= 0
-                return (
-                  <div key={feature.name} className="popup-impact-row">
-                    <span className="popup-impact-label">{feature.pretty_name}</span>
-                    <div className="popup-impact-bar">
-                      <div
-                        className={
-                          isPositive
-                            ? "popup-impact-fill popup-impact-fill--positive"
-                            : "popup-impact-fill popup-impact-fill--negative"
-                        }
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                    <span
-                      className={
-                        isPositive
-                          ? "popup-impact-value popup-impact-value--positive"
-                          : "popup-impact-value popup-impact-value--negative"
-                      }
-                    >
-                      {isPositive ? "+" : "-"}
-                      {percent}%
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+          {statsCard}
 
           <button 
             className="popup-button popup-button-primary"
@@ -335,6 +339,7 @@ function IndexPopup() {
 
       {recommendation && (
         <div className="popup-card">
+          {statsCard}
           <p className="popup-message-title">Message Draft</p>
           <p className="popup-message-hint">
             Make sure to review and edit before sending!
