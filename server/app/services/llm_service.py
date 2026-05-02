@@ -228,6 +228,7 @@ def generate_motivation(
         if fit_lines:
             fit_str = "\n".join(fit_lines)
 
+    listing_type = getattr(listing, "listing_type", None)
     prompt = (
         "You are writing a rental application motivation letter"
         " on behalf of a tenant.\n"
@@ -242,7 +243,7 @@ def generate_motivation(
         + f"## Listing\n"
         f"Title: {listing.title}\n"
         f"Location: {listing.location or 'not stated'}\n"
-        f"Type: {listing.listing_type or 'not stated'}\n"
+        f"Type: {listing_type or 'not stated'}\n"
         f"Price: {price_str}\n"
         f"Description: {listing.description}\n\n"
         f"## What the landlord cares about\n{features_str}\n\n"

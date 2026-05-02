@@ -25,8 +25,9 @@ def find_similar_applications(
     limit: int = 5,
 ) -> list[dict[str, Any]]:
     listing_query = select(Listing.listing_id)
-    if listing.listing_type:
-        listing_query = listing_query.where(Listing.listing_type == listing.listing_type)
+    listing_type = getattr(listing, "listing_type", None)
+    if listing_type and hasattr(Listing, "listing_type"):
+        listing_query = listing_query.where(Listing.listing_type == listing_type)
     if listing.location:
         listing_query = listing_query.where(Listing.location == listing.location)
     if listing.price is not None:

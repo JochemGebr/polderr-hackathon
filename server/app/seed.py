@@ -10,7 +10,10 @@ from app.models import (
     MessageFeature,
     Person,
     PersonFeature,
+    User,
 )
+
+SEED_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 
 def seed() -> None:
@@ -419,4 +422,41 @@ def seed() -> None:
                 session.add(application)
             session.commit()
 
-    print("Seed complete: inserted features and listings.")
+        # create demo user with known fixed ID and sample applications
+        demo_user = User(
+            user_id=SEED_USER_ID,
+            name="Demo User",
+            occupation="Software Engineer",
+            income=4500,
+            age=27,
+            gender="male",
+            has_pets=False,
+            bio="Quiet, tidy professional. Work from home occasionally.",
+        )
+        session.add(demo_user)
+        session.commit()
+
+        # grab listing IDs to attach demo applications to
+        seeded_listings = session.exec(
+            __import__("sqlmodel").select(Listing)
+        ).all()
+        demo_apps = [
+            ("achter-1", "INVITED"),
+            ("achter-2", "PENDING"),
+            ("wassenaar-1", "REJECTED"),
+            ("leeuwarden-1", "ACCEPTED"),
+            ("leeuwarden-2", "GHOSTED"),
+        ]
+        listing_map = {l.external_id: l for l in seeded_listings}
+        for ext_id, status in demo_apps:
+            lst = listing_map.get(ext_id)
+            if lst:
+                session.add(Application(
+                    user_id=SEED_USER_ID,
+                    listing_id=lst.listing_id,
+                    status=status,
+                    message="Hi, I'm interested in this listing.",
+                ))
+        session.commit()
+
+    print("Seed complete: inserted features, listings, and demo user.")
