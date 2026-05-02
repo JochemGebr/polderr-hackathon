@@ -94,7 +94,7 @@ body {
 .popup-impact-card {
   background: transparent;
   border-radius: 14px;
-  padding: 16px;
+  padding: 0 16px 16px;
   color: #111827;
   box-shadow: none;
   margin-bottom: 12px;
