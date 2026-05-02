@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
@@ -7,6 +9,14 @@ from app.schemas import ExtractedFeature, ListingCreate, ListingResponse
 from app.services import llm_service
 
 router = APIRouter(prefix="/listings", tags=["listings"])
+
+
+def _serialize(body: ListingCreate) -> dict:
+    data = body.model_dump(exclude={"accepted_occupations"})
+    data["accepted_occupations"] = (
+        json.dumps(body.accepted_occupations) if body.accepted_occupations is not None else None
+    )
+    return data
 
 
 def _get_features(session: Session, listing_id: str) -> list[ExtractedFeature]:
@@ -30,12 +40,11 @@ def _extract_and_tag(session: Session, listing: Listing) -> list[ExtractedFeatur
     extracted = llm_service.extract_listing_features(listing)
     result = []
     for f in extracted:
-        # Upsert Feature by name so features are shared across listings (needed for correlation)
         feature = session.exec(select(Feature).where(Feature.name == f["name"])).first()
         if not feature:
             feature = Feature(name=f["name"], description=f.get("description"))
             session.add(feature)
-            session.flush()  # populate feature_id before using it in the link
+            session.flush()
 
         tag = ListingFeature(
             listing_id=listing.listing_id,
@@ -55,41 +64,26 @@ def _extract_and_tag(session: Session, listing: Listing) -> list[ExtractedFeatur
 
 @router.post("", response_model=ListingResponse, status_code=201)
 def upsert_listing(body: ListingCreate, session: Session = Depends(get_session)):
+    data = _serialize(body)
     existing = session.exec(
         select(Listing).where(Listing.external_id == body.external_id)
     ).first()
 
     if existing:
-        existing.url = body.url
-        existing.title = body.title
-        existing.description = body.description
-        existing.price = body.price
-        existing.location = body.location
-        existing.listing_type = body.listing_type
-        existing.accepted_person_id = body.accepted_person_id
+        for field, value in data.items():
+            setattr(existing, field, value)
         session.add(existing)
         session.commit()
         listing = existing
 
-        # Return existing features without re-running LLM
         features = _get_features(session, listing.listing_id)
         if features:
             return ListingResponse(listing_id=listing.listing_id, features=features)
     else:
-        listing = Listing(
-            external_id=body.external_id,
-            url=body.url,
-            title=body.title,
-            description=body.description,
-            price=body.price,
-            location=body.location,
-            listing_type=body.listing_type,
-            accepted_person_id=body.accepted_person_id,
-        )
+        listing = Listing(**data)
         session.add(listing)
         session.commit()
         session.refresh(listing)
 
-    # New listing (or existing with no features yet) — run LLM extraction
     features = _extract_and_tag(session, listing)
     return ListingResponse(listing_id=listing.listing_id, features=features)

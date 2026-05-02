@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional  # Any kept for UserCreate.profile
 
 from pydantic import BaseModel
 
@@ -10,10 +10,21 @@ class ListingCreate(BaseModel):
     url: str
     title: str
     description: str
-    price: Optional[int] = None  # monthly rent in cents
+    price: Optional[int] = None
+    utilities_included: Optional[bool] = None
     location: Optional[str] = None
     listing_type: Optional[str] = None
-    raw: dict[str, Any]  # full scraped payload — store verbatim
+    size_m2: Optional[int] = None
+    furnished: Optional[bool] = None
+    available_from: Optional[str] = None
+    min_duration_months: Optional[int] = None
+    age_min: Optional[int] = None
+    age_max: Optional[int] = None
+    gender_preference: Optional[str] = None
+    accepted_occupations: Optional[list[str]] = None
+    max_tenants: Optional[int] = None
+    language: Optional[str] = None
+    pets_allowed: Optional[bool] = None
     accepted_person_id: Optional[str] = None
 
 
