@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlmodel import Session, col, select
 
 from app.db import engine, get_session
-from app.models import Application, Feature, Listing, ListingFeature, User, UserFeature
+from app.models import Application, Feature, Listing, ListingFeature, Match, User, UserFeature
 from app.schemas import UserCreate, UserUpdate
 from app.services import llm_service
 
@@ -117,21 +117,13 @@ def _get_user_applications(user_id: str, session):
         if not listing:
             continue
 
-        listing_features = session.exec(
-            select(ListingFeature).where(
-                ListingFeature.listing_id == listing.listing_id
+        match = session.exec(
+            select(Match).where(
+                Match.user_id == user_id,
+                Match.listing_id == app.listing_id,
             )
-        ).all()
-
-        compatibility = None
-        if listing_features and user_score_map:
-            total = sum(lf.score for lf in listing_features)
-            matched = sum(
-                lf.score * user_score_map.get(lf.feature_id, 0.0)
-                for lf in listing_features
-            )
-            if total > 0:
-                compatibility = round(matched / total, 2)
+        ).first()
+        compatibility = match.match_score if match else None
 
         result.append({
             "application_id": app.application_id,
