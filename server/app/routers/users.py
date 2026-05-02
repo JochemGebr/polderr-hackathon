@@ -2,10 +2,10 @@ import json
 from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from app.db import engine, get_session
-from app.models import User
+from app.models import Application, Feature, Listing, ListingFeature, User, UserFeature
 from app.schemas import UserCreate, UserUpdate
 from app.services import llm_service
 
@@ -70,3 +70,77 @@ def update_user(
     session.refresh(user)
     background_tasks.add_task(_extract_features_bg, user.user_id)
     return user
+
+
+@router.get("/{user_id}/features")
+def get_user_features(
+    user_id: str, session: Session = Depends(get_session)
+):
+    if not session.get(User, user_id):
+        raise HTTPException(status_code=404, detail="User not found")
+
+    rows = session.exec(
+        select(UserFeature).where(UserFeature.user_id == user_id)
+    ).all()
+    result = []
+    for uf in rows:
+        feature = session.get(Feature, uf.feature_id)
+        if feature:
+            result.append({"name": feature.name, "score": uf.score})
+    return result
+
+
+@router.get("/{user_id}/applications")
+def get_user_applications(
+    user_id: str, session: Session = Depends(get_session)
+):
+    if not session.get(User, user_id):
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_features = session.exec(
+        select(UserFeature).where(UserFeature.user_id == user_id)
+    ).all()
+    user_score_map = {uf.feature_id: uf.score for uf in user_features}
+
+    applications = session.exec(
+        select(Application)
+        .where(Application.user_id == user_id)
+        .order_by(col(Application.applied_at).desc())
+    ).all()
+
+    result = []
+    for app in applications:
+        listing = session.get(Listing, app.listing_id)
+        if not listing:
+            continue
+
+        listing_features = session.exec(
+            select(ListingFeature).where(
+                ListingFeature.listing_id == listing.listing_id
+            )
+        ).all()
+
+        compatibility = None
+        if listing_features and user_score_map:
+            total = sum(lf.score for lf in listing_features)
+            matched = sum(
+                lf.score * user_score_map.get(lf.feature_id, 0.0)
+                for lf in listing_features
+            )
+            if total > 0:
+                compatibility = round(matched / total, 2)
+
+        result.append({
+            "application_id": app.application_id,
+            "status": app.status,
+            "applied_at": app.applied_at.isoformat(),
+            "listing": {
+                "listing_id": listing.listing_id,
+                "title": listing.title,
+                "location": listing.location,
+                "price": listing.price,
+                "listing_type": listing.listing_type,
+            },
+            "compatibility": compatibility,
+        })
+    return result
