@@ -128,16 +128,64 @@ def get_insights(
                 "score": tag.score,
             })
 
+    # Look up descriptions for counted features
+    def _with_desc(counter: Counter[str]) -> list[dict[str, Any]]:
+        result = []
+        for name, count in counter.most_common():
+            feat = session.exec(select(Feature).where(Feature.name == name)).first()
+            result.append({
+                "name": name,
+                "count": count,
+                "description": feat.description if feat else None,
+            })
+        return result
+
     return {
         "listing_features": listing_features,
         "user_features": user_features,
-        "accepted_features": [
-            {"name": n, "count": c} for n, c in accepted_counter.most_common()
-        ],
-        "rejected_features": [
-            {"name": n, "count": c} for n, c in rejected_counter.most_common()
-        ],
+        "accepted_features": _with_desc(accepted_counter),
+        "rejected_features": _with_desc(rejected_counter),
     }
+
+
+def compute_match(
+    insights: dict[str, Any],
+) -> tuple[float, list[dict[str, Any]], list[dict[str, Any]]]:
+    user_names = {f["name"] for f in insights["user_features"]}
+    accepted = insights["accepted_features"]  # [{name, count, description}]
+    accepted_names = {f["name"] for f in accepted}
+    accepted_map = {f["name"]: f for f in accepted}
+    user_feature_map = {f["name"]: f for f in insights["user_features"]}
+
+    strengths = [
+        {"name": n, "description": user_feature_map[n].get("description", "")}
+        for n in sorted(user_names & accepted_names,
+                        key=lambda n: -accepted_map[n]["count"])
+    ]
+
+    weaknesses = [
+        {"name": f["name"], "description": f.get("description", "")}
+        for f in sorted(accepted, key=lambda f: -f["count"])
+        if f["name"] not in user_names
+    ]
+
+    total_weight = sum(f["count"] for f in accepted)
+    if total_weight > 0:
+        strength_weight = sum(
+            accepted_map[n]["count"] for n in user_names & accepted_names
+        )
+        score = round(strength_weight / total_weight, 3)
+    else:
+        # Cold-start: listing-feature × user-feature dot product
+        lf_map = {f["name"]: f["score"] for f in insights["listing_features"]}
+        total = sum(lf_map.values()) or 1
+        matched = sum(
+            lf_map.get(f["name"], 0) * f["score"]
+            for f in insights["user_features"]
+        )
+        score = round(min(matched / total, 1.0), 3)
+
+    return score, strengths, weaknesses
 
 
 def get_principles() -> str:

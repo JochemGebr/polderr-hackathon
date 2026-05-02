@@ -151,7 +151,8 @@ def generate_motivation(
     user: User,
     listing_features: list[dict[str, Any]],
     session: Session,
-    insights: dict[str, Any] | None = None,
+    strengths: list[dict[str, Any]] | None = None,
+    weaknesses: list[dict[str, Any]] | None = None,
 ) -> str:
     from app.services.aggregation_service import (
         find_similar_applications,
@@ -198,35 +199,20 @@ def generate_motivation(
             parts.append(part)
         examples_str = "\n\n---\n\n".join(parts)
 
-    # Build applicant-fit section from cross-referenced insights
     fit_str = ""
-    if insights:
-        user_names = {f["name"] for f in insights.get("user_features", [])}
-        accepted_names = {f["name"] for f in insights.get("accepted_features", [])}
-        rejected_names = {f["name"] for f in insights.get("rejected_features", [])}
-
-        strengths = sorted(user_names & accepted_names)
-        risks = sorted(user_names & rejected_names)
-        missing = sorted(accepted_names - user_names)[:3]
-
+    if strengths or weaknesses:
         fit_lines = []
         if strengths:
             fit_lines.append(
-                f"Strengths to highlight (applicant has traits that got others accepted): "
-                + ", ".join(strengths)
+                "Strengths to highlight (traits that got similar applicants accepted): "
+                + ", ".join(s["name"] for s in strengths)
             )
-        if risks:
+        if weaknesses:
             fit_lines.append(
-                f"Risks to address or omit (applicant has traits that got others rejected): "
-                + ", ".join(risks)
+                "Gaps vs accepted applicants (traits they had that this applicant lacks): "
+                + ", ".join(w["name"] for w in weaknesses)
             )
-        if missing:
-            fit_lines.append(
-                f"Gaps vs accepted applicants (traits accepted tenants had that this applicant lacks): "
-                + ", ".join(missing)
-            )
-        if fit_lines:
-            fit_str = "\n".join(fit_lines)
+        fit_str = "\n".join(fit_lines)
 
     prompt = (
         "You are writing a rental application motivation letter"

@@ -6,6 +6,7 @@ ApplicationStatus = Literal["PENDING", "INVITED", "REJECTED", "GHOSTED", "ACCEPT
 
 
 class ListingCreate(BaseModel):
+    user_id: str
     external_id: str
     url: str
     title: str
@@ -51,20 +52,28 @@ class ApplicationUpdate(BaseModel):
     result_notes: Optional[str] = None
 
 
+class MatchItem(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class MatchResponse(BaseModel):
+    listing_id: str
+    match_score: float          # 0.0–1.0
+    strengths: list[MatchItem]  # user traits that got similar applicants accepted
+    weaknesses: list[MatchItem] # accepted traits the user lacks
+
+
+class RecommendationResponse(BaseModel):
+    message: str
+
+
+# Kept for internal use by feature tag endpoints
 class ExtractedFeature(BaseModel):
     feature_id: str
     name: str
     description: Optional[str] = None
     score: float
-
-
-class ListingResponse(BaseModel):
-    listing_id: str
-    features: list[ExtractedFeature]
-
-
-class MotivationResponse(BaseModel):
-    motivation: str
 
 
 class FeatureCreate(BaseModel):

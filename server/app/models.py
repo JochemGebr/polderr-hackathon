@@ -70,6 +70,19 @@ class User(SQLModel, table=True):
     )
 
 
+class Match(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("user_id", "listing_id"),)
+
+    match_id: str = Field(default_factory=new_id, primary_key=True)
+    user_id: str = Field(foreign_key="user.user_id", index=True)
+    listing_id: str = Field(foreign_key="listing.listing_id", index=True)
+    match_score: float = 0.0
+    strengths: str = "[]"   # JSON: list of {name, description}
+    weaknesses: str = "[]"  # JSON: list of {name, description}
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 # status values: PENDING | INVITED | REJECTED | GHOSTED | ACCEPTED
 class Application(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("user_id", "listing_id"),)
