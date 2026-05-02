@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 
 from app.db import get_session
 from app.models import Feature, Listing, ListingFeature, Match, User
-from app.schemas import ExtractedFeature, ListingCreate, MatchItem, MatchResponse
+from app.schemas import ExtractedFeature, FeatureScore, ListingCreate, MatchResponse
 from app.services import llm_service
 from app.services.aggregation_service import compute_match, get_insights
 
@@ -67,24 +67,21 @@ def _upsert_match(
     user_id: str,
     listing_id: str,
     score: float,
-    strengths: list[dict],
-    weaknesses: list[dict],
+    features: list[dict],
 ) -> None:
     existing = session.exec(
         select(Match).where(Match.user_id == user_id, Match.listing_id == listing_id)
     ).first()
     if existing:
         existing.match_score = score
-        existing.strengths = json.dumps(strengths)
-        existing.weaknesses = json.dumps(weaknesses)
+        existing.features = json.dumps(features)
         session.add(existing)
     else:
         session.add(Match(
             user_id=user_id,
             listing_id=listing_id,
             match_score=score,
-            strengths=json.dumps(strengths),
-            weaknesses=json.dumps(weaknesses),
+            features=json.dumps(features),
         ))
     session.commit()
 
@@ -118,14 +115,13 @@ def upsert_listing(body: ListingCreate, session: Session = Depends(get_session))
 
     # Compute match for this user
     insights = get_insights(session, listing, user)
-    score, strengths, weaknesses = compute_match(insights)
-    _upsert_match(session, body.user_id, listing.listing_id, score, strengths, weaknesses)
+    score, features = compute_match(insights)
+    _upsert_match(session, body.user_id, listing.listing_id, score, features)
 
     return MatchResponse(
         listing_id=listing.listing_id,
         match_score=score,
-        strengths=[MatchItem(**s) for s in strengths],
-        weaknesses=[MatchItem(**w) for w in weaknesses],
+        features=[FeatureScore(**f) for f in features],
     )
 
 

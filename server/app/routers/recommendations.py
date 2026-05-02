@@ -50,8 +50,9 @@ def get_recommendation(
             detail="No match found — POST the listing first to generate match data",
         )
 
-    strengths = json.loads(match.strengths)
-    weaknesses = json.loads(match.weaknesses)
+    all_features = json.loads(match.features)
+    strengths = [f for f in all_features if f["score"] > 0]
+    weaknesses = [f for f in all_features if f["score"] < 0]
     listing_features = _listing_features(session, listing_id)
 
     message = llm_service.generate_motivation(

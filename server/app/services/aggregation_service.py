@@ -148,44 +148,59 @@ def get_insights(
     }
 
 
+def _pretty(name: str) -> str:
+    return name.replace("_", " ").title()
+
+
 def compute_match(
     insights: dict[str, Any],
-) -> tuple[float, list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[float, list[dict[str, Any]]]:
+    """Return (match_score, features) where each feature has name, pretty_name,
+    and score in [-1.0, +1.0]. Positive = strength, negative = weakness."""
     user_names = {f["name"] for f in insights["user_features"]}
     accepted = insights["accepted_features"]  # [{name, count, description}]
-    accepted_names = {f["name"] for f in accepted}
-    accepted_map = {f["name"]: f for f in accepted}
-    user_feature_map = {f["name"]: f for f in insights["user_features"]}
 
-    strengths = [
-        {"name": n, "description": user_feature_map[n].get("description", "")}
-        for n in sorted(user_names & accepted_names,
-                        key=lambda n: -accepted_map[n]["count"])
-    ]
+    if accepted:
+        max_count = max(f["count"] for f in accepted)
+        total_weight = sum(f["count"] for f in accepted)
+        strength_weight = sum(f["count"] for f in accepted if f["name"] in user_names)
+        match_score = round(strength_weight / total_weight, 3) if total_weight else 0.0
 
-    weaknesses = [
-        {"name": f["name"], "description": f.get("description", "")}
-        for f in sorted(accepted, key=lambda f: -f["count"])
-        if f["name"] not in user_names
-    ]
-
-    total_weight = sum(f["count"] for f in accepted)
-    if total_weight > 0:
-        strength_weight = sum(
-            accepted_map[n]["count"] for n in user_names & accepted_names
-        )
-        score = round(strength_weight / total_weight, 3)
+        features = [
+            {
+                "name": f["name"],
+                "pretty_name": _pretty(f["name"]),
+                "score": round(
+                    (f["count"] / max_count) if f["name"] in user_names
+                    else -(f["count"] / max_count),
+                    3,
+                ),
+            }
+            for f in sorted(accepted, key=lambda f: -f["count"])
+        ]
     else:
-        # Cold-start: listing-feature × user-feature dot product
-        lf_map = {f["name"]: f["score"] for f in insights["listing_features"]}
-        total = sum(lf_map.values()) or 1
-        matched = sum(
-            lf_map.get(f["name"], 0) * f["score"]
-            for f in insights["user_features"]
-        )
-        score = round(min(matched / total, 1.0), 3)
+        # Cold-start: use listing × user feature overlap
+        lf_list = insights["listing_features"]
+        uf_score_map = {f["name"]: f["score"] for f in insights["user_features"]}
+        max_lf = max((f["score"] for f in lf_list), default=1) or 1
+        total = sum(f["score"] for f in lf_list) or 1
+        matched = sum(f["score"] * uf_score_map.get(f["name"], 0) for f in lf_list)
+        match_score = round(min(matched / total, 1.0), 3)
 
-    return score, strengths, weaknesses
+        features = [
+            {
+                "name": f["name"],
+                "pretty_name": _pretty(f["name"]),
+                "score": round(
+                    (f["score"] / max_lf) if f["name"] in user_names
+                    else -(f["score"] / max_lf),
+                    3,
+                ),
+            }
+            for f in sorted(lf_list, key=lambda f: -f["score"])
+        ]
+
+    return match_score, features
 
 
 def get_principles() -> str:

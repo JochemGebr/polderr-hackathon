@@ -52,16 +52,16 @@ class ApplicationUpdate(BaseModel):
     result_notes: Optional[str] = None
 
 
-class MatchItem(BaseModel):
+class FeatureScore(BaseModel):
     name: str
-    description: Optional[str] = None
+    pretty_name: str        # display-ready: "Quiet Person" not "quiet_person"
+    score: float            # -1.0 (missing/weak) to +1.0 (strong match)
 
 
 class MatchResponse(BaseModel):
     listing_id: str
-    match_score: float          # 0.0–1.0
-    strengths: list[MatchItem]  # user traits that got similar applicants accepted
-    weaknesses: list[MatchItem] # accepted traits the user lacks
+    match_score: float          # 0.0–1.0 overall compatibility
+    features: list[FeatureScore]
 
 
 class RecommendationResponse(BaseModel):
