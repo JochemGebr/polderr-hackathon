@@ -30,18 +30,37 @@ Database (SQLite) is created automatically on first start. Interactive docs at *
 **`ListingCreate`**
 ```json
 {
-  "external_id": "kamernet-12345",
-  "url": "https://kamernet.nl/...",
-  "title": "Studio Amsterdam-West",
-  "description": "Rustig gelegen studio...",
-  "price": 120000,
-  "location": "Amsterdam",
-  "listing_type": "studio",
-  "raw": { "...": "full scraped payload" },
+  "external_id": "2373935",
+  "url": "https://kamernet.nl/huren/kamer-delft/...",
+  "title": "Kamer Hendrik Tollensstraat",
+  "description": "Full listing description text...",
+
+  "price": 90000,
+  "utilities_included": true,
+
+  "location": "Delft",
+  "listing_type": "room",
+  "size_m2": 14,
+  "furnished": true,
+  "available_from": "2026-08-01",
+  "min_duration_months": 3,
+
+  "age_min": 16,
+  "age_max": 35,
+  "gender_preference": "female",
+  "accepted_occupations": ["student", "working_student", "employed"],
+  "max_tenants": 1,
+  "language": "English",
+  "pets_allowed": false,
+
   "accepted_person_id": null
 }
 ```
-> `price` is in **euro cents** (€1200 = `120000`). `raw` accepts any object from the scraper.
+> All fields except `external_id`, `url`, `title`, and `description` are optional — send what the scraper can find.
+> `price` is in **euro cents** (€900 = `90000`).
+> `external_id` = the numeric listing ID from the Kamernet URL (`kamer-2373935` → `"2373935"`).
+> `gender_preference`: `"any"` | `"male"` | `"female"`.
+> `accepted_occupations`: any subset of `["student", "working_student", "employed", "job_seeker"]`.
 
 ---
 
