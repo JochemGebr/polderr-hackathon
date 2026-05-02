@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.db import get_session
-from app.models import Feature, Listing, ListingFeature, Match, User
+from app.models import Application, Feature, Listing, ListingFeature, Match, User
 from app.schemas import RecommendationResponse
 from app.services import llm_service
 
@@ -49,6 +49,17 @@ def get_recommendation(
             status_code=404,
             detail="No match found — POST the listing first to generate match data",
         )
+
+    # Ensure an Application record exists for this user+listing pair
+    existing_app = session.exec(
+        select(Application).where(
+            Application.user_id == user_id,
+            Application.listing_id == listing_id,
+        )
+    ).first()
+    if not existing_app:
+        session.add(Application(user_id=user_id, listing_id=listing_id))
+        session.commit()
 
     if match.message:
         return RecommendationResponse(message=match.message)
